@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
+import 'dart:async'; // Added for News Slider Timer
 import 'package:fl_chart/fl_chart.dart'; // Ensure fl_chart is added for mini charts
 
 import 'screens/screening_screen.dart';
 import 'screens/placeholder_screens.dart';
 import 'screens/calculator_screen.dart';
 import 'screens/watchlist_screen.dart';
-import 'screens/news_screen.dart';
+import 'screens/stocks_screen.dart';
 import 'screens/forecast_screen.dart';
 import 'screens/trading_plan_screen.dart';
 import 'screens/knowledge_screen.dart';
+import 'screens/analysis_screen.dart';
+import 'services/api_service.dart';
+import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   runApp(const StockIDApp());
@@ -133,10 +139,160 @@ class _MainContainerState extends State<MainContainer> {
   }
 }
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   final Function(int) onNavigate;
 
   const DashboardScreen({super.key, required this.onNavigate});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen>
+    with TickerProviderStateMixin {
+  final ApiService _apiService = ApiService();
+  late TabController _tabController;
+
+  Map<String, List<Map<String, dynamic>>> _categoryStocks = {
+    'Gainer': [],
+    'Hype': [],
+    'MSCI': [],
+    'FTSE': [],
+    'Loser': [],
+  };
+  bool _isLoadingCategories = true;
+
+  // News Slider State
+  late PageController _newsController;
+  int _currentNewsIndex = 0;
+  Timer? _newsTimer;
+  Timer? _updateTimer;
+  List<dynamic> _newsList = [
+    // Default fallback news
+    {
+      'title': 'IHSG Stabil di Level 7.200',
+      'time': '1 jam lalu',
+      'source': 'CNBC',
+    },
+    {
+      'title': 'Saham Bank Big Caps Menguat',
+      'time': '2 jam lalu',
+      'source': 'Kontan',
+    },
+    {
+      'title': 'Sektor Teknologi Mulai Rebound',
+      'time': '3 jam lalu',
+      'source': 'Bisnis',
+    },
+    {
+      'title': 'The Fed Tahan Suku Bunga',
+      'time': '5 jam lalu',
+      'source': 'Bloomberg',
+    },
+    {
+      'title': 'Harga Komoditas Emas Naik Tipis',
+      'time': '6 jam lalu',
+      'source': 'Investing',
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 5, vsync: this);
+    _newsController = PageController();
+    _fetchLivePrices();
+    _fetchNews(); // Initial fetch
+    _startNewsSlider();
+    _startUpdateTimer();
+  }
+
+  void _fetchNews() async {
+    try {
+      final data = await _apiService.fetchMarketNews();
+      if (mounted &&
+          data['news'] != null &&
+          (data['news'] as List).isNotEmpty) {
+        setState(() {
+          _newsList = data['news'];
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching news: $e');
+    }
+  }
+
+  Future<void> _launchURL(String? urlString) async {
+    if (urlString == null || urlString.isEmpty) return;
+    try {
+      final Uri url = Uri.parse(urlString);
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+        debugPrint('Could not launch $urlString');
+      }
+    } catch (e) {
+      debugPrint('Launch Error: $e');
+    }
+  }
+
+  void _startNewsSlider() {
+    _newsTimer?.cancel();
+    _newsTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (mounted && _newsController.hasClients) {
+        int nextPage = _currentNewsIndex + 1;
+        if (nextPage >= _newsList.length) {
+          nextPage = 0;
+        }
+        _newsController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.easeInOut,
+        );
+        setState(() {
+          _currentNewsIndex = nextPage;
+        });
+      }
+    });
+  }
+
+  void _startUpdateTimer() {
+    _updateTimer?.cancel();
+    _updateTimer = Timer.periodic(const Duration(hours: 1), (timer) {
+      _fetchNews();
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _newsController.dispose();
+    _newsTimer?.cancel();
+    _updateTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchLivePrices() async {
+    if (!mounted) return;
+
+    setState(() => _isLoadingCategories = true);
+
+    try {
+      final categories = await _apiService.fetchMarketCategories();
+      if (mounted) {
+        setState(() {
+          // Robust key checking and data merging
+          if (categories.isNotEmpty) {
+            _categoryStocks = categories;
+          }
+          _isLoadingCategories = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching market dynamics: $e');
+      if (mounted) {
+        setState(() => _isLoadingCategories = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -226,20 +382,13 @@ class DashboardScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildPortfolioSummary(context),
+                    _buildNewsSlider(context),
                     const SizedBox(height: 24),
                     _buildQuickActions(context),
                     const SizedBox(height: 32),
-                    Text(
-                      'Trending Multibaggers',
-                      style: GoogleFonts.outfit(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTrendingList(context),
+                    _buildCategoryTabs(),
+                    const SizedBox(height: 20),
+                    _buildCategoryList(),
                     const SizedBox(height: 32),
                     _buildDisclaimer(),
                     const SizedBox(height: 80), // Space for bottom nav
@@ -253,7 +402,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPortfolioSummary(BuildContext context) {
+  Widget _buildNewsSlider(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
@@ -261,8 +410,6 @@ class DashboardScreen extends StatelessWidget {
         child: Container(
           width: double.infinity,
           height: 180,
-          padding: const EdgeInsets.all(24),
-
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
@@ -285,105 +432,116 @@ class DashboardScreen extends StatelessWidget {
               ),
             ],
           ),
-          child: Stack(
-            children: [
-              // Background Chart Wave (Abstract)
-              Positioned(
-                bottom: -20,
-                left: 0,
-                right: 0,
-                height: 80,
-                child: LineChart(
-                  LineChartData(
-                    gridData: FlGridData(show: false),
-                    titlesData: FlTitlesData(show: false),
-                    borderData: FlBorderData(show: false),
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: [
-                          const FlSpot(0, 3),
-                          const FlSpot(1, 4),
-                          const FlSpot(2, 3.5),
-                          const FlSpot(3, 5),
-                          const FlSpot(4, 4.8),
-                          const FlSpot(5, 6),
-                          const FlSpot(6, 5.5),
-                          const FlSpot(7, 7),
-                        ],
-                        isCurved: true,
-                        color: Colors.white.withValues(alpha: 0.1),
-                        barWidth: 3,
-                        dotData: FlDotData(show: false),
-                        belowBarData: BarAreaData(
-                          show: true,
-                          color: Colors.white.withValues(alpha: 0.05),
+          child: PageView.builder(
+            controller: _newsController,
+            itemCount: _newsList.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentNewsIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              final news = _newsList[index];
+              return GestureDetector(
+                onTap: () => _launchURL(news['url']),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Background Image
+                    CachedNetworkImage(
+                      imageUrl:
+                          (news['imageUrl'] != null &&
+                              news['imageUrl'].toString().trim().isNotEmpty)
+                          ? news['imageUrl'].toString().trim()
+                          : 'https://images.unsplash.com/photo-1611974717482-aa002b6624f1?w=800&auto=format',
+                      fit: BoxFit.cover,
+                      color: Colors.black.withValues(alpha: 0.5),
+                      colorBlendMode: BlendMode.darken,
+                      placeholder: (context, url) => Container(
+                        color: const Color(0xFF13081E),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Color(0xFFC800FF),
+                              strokeWidth: 2,
+                            ),
+                          ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
+                      errorWidget: (context, url, error) => Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Color(0xFF4B0082), Color(0xFF0A0214)],
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            Icons.image_not_supported_outlined,
+                            color: Colors.white.withValues(alpha: 0.1),
+                            size: 40,
+                          ),
+                        ),
+                      ),
+                    ),
 
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Total Portfolio Value',
-                    style: GoogleFonts.outfit(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Rp 1,250,500,000',
-                    style: GoogleFonts.outfit(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.greenAccent.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.arrow_circle_up_rounded,
-                          color: Colors.greenAccent,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '+5.4%',
-                          style: GoogleFonts.outfit(
-                            color: Colors.greenAccent,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                    // Content
+                    Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFFC800FF,
+                              ).withValues(alpha: 0.8),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              news['source'] ?? 'BREAKING NEWS',
+                              style: GoogleFonts.outfit(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Today\'s Gain',
-                          style: GoogleFonts.outfit(
-                            color: Colors.white60,
-                            fontSize: 12,
+                          const SizedBox(height: 12),
+                          Text(
+                            news['title'] ?? 'Market Updates',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.outfit(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              height: 1.2,
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                          Text(
+                            news['time'] ?? 'Just/Now',
+                            style: GoogleFonts.outfit(
+                              fontSize: 12,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -413,13 +571,13 @@ class DashboardScreen extends StatelessWidget {
           children: [
             _actionCard(
               context,
-              Icons.newspaper_rounded,
-              'News',
-              'Market Updates',
+              Icons.list_alt_rounded,
+              'Stocks',
+              '800+ Listed',
               const Color(0xFF00E5FF),
               () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const NewsScreen()),
+                MaterialPageRoute(builder: (context) => const StocksScreen()),
               ),
             ),
             _actionCard(
@@ -562,47 +720,122 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTrendingList(BuildContext context) {
-    final stocks = [
-      {
-        'code': 'BBCA',
-        'name': 'Bank Central Asia',
-        'price': 'Rp 9,850',
-        'change': '+2.3%',
-        'color': Colors.greenAccent,
-      },
-      {
-        'code': 'ADRO',
-        'name': 'Adaro Energy',
-        'price': 'Rp 2,450',
-        'change': '+4.1%',
-        'color': Colors.greenAccent,
-      },
-      {
-        'code': 'GOTO',
-        'name': 'GoTo Gojek Tokopedia',
-        'price': 'Rp 82',
-        'change': '+7.8%',
-        'color': Colors.greenAccent,
-      },
-      {
-        'code': 'TLKM',
-        'name': 'Telkom Indonesia',
-        'price': 'Rp 3,980',
-        'change': '-0.5%',
-        'color': Colors.redAccent,
-      },
-    ];
+  Widget _buildCategoryTabs() {
+    return Center(
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          tabAlignment: TabAlignment.center,
+          labelPadding: const EdgeInsets.symmetric(horizontal: 20),
+          indicator: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: const LinearGradient(
+              colors: [Color(0xFF8A2BE2), Color(0xFFC800FF)],
+            ),
+          ),
+          labelStyle: GoogleFonts.outfit(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+          unselectedLabelStyle: GoogleFonts.outfit(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+          ),
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white38,
+          dividerColor: Colors.transparent,
+          indicatorSize: TabBarIndicatorSize.tab,
+          tabs: const [
+            Tab(text: 'Gainer'),
+            Tab(text: 'Hype'),
+            Tab(text: 'MSCI'),
+            Tab(text: 'FTSE'),
+            Tab(text: 'Loser'),
+          ],
+        ),
+      ),
+    );
+  }
 
-    return Column(
-      children: stocks.map<Widget>((stock) => _buildStockCard(stock)).toList(),
+  Widget _buildCategoryList() {
+    return AnimatedBuilder(
+      animation: _tabController,
+      builder: (context, _) {
+        if (_isLoadingCategories) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(40.0),
+              child: CircularProgressIndicator(color: Color(0xFFC800FF)),
+            ),
+          );
+        }
+
+        if (_categoryStocks.isEmpty) {
+          return const Center(
+            child: Text(
+              'No data available',
+              style: TextStyle(color: Colors.white54),
+            ),
+          );
+        }
+
+        const categoryKeys = ['Gainer', 'Hype', 'MSCI', 'FTSE', 'Loser'];
+        final String categoryName = categoryKeys[_tabController.index];
+
+        // Final fallback: Ensure list exists even if key mapping fails temporarily
+        final List<Map<String, dynamic>> stocks =
+            _categoryStocks[categoryName] ?? [];
+
+        return SizedBox(
+          height: 400, // Fixed height to show approx 4 cards
+          child: ListView.builder(
+            itemCount: stocks.take(10).length,
+            padding: EdgeInsets.zero,
+            physics: const BouncingScrollPhysics(),
+            itemBuilder: (context, index) {
+              final stock = stocks[index];
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AnalysisScreen(
+                        stockData: {
+                          ...stock,
+                          'current_price': stock['price'],
+                          'analyst_score': 85,
+                        },
+                      ),
+                    ),
+                  );
+                },
+                child: _buildStockCard(stock),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
   Widget _buildStockCard(Map<String, dynamic> stock) {
-    final isPositive = stock['change'].toString().startsWith('+');
+    final double changePercent = stock['changeNum'] ?? 0.0;
+    final isPositive = changePercent >= 0;
     final color = isPositive ? Colors.greenAccent : Colors.redAccent;
-    // Mock data for mini chart
+
+    final currencyFormat = NumberFormat.currency(
+      locale: 'en_US',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
+
+    // Mock data for mini chart remains for aesthetics
     final spots = isPositive
         ? [
             const FlSpot(0, 1),
@@ -628,7 +861,6 @@ class DashboardScreen extends StatelessWidget {
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
-
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
@@ -673,12 +905,12 @@ class DashboardScreen extends StatelessWidget {
                 ),
               ),
               Expanded(
-                flex: 3,
+                flex: 4,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      stock['price'],
+                      currencyFormat.format(stock['price']),
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     Row(

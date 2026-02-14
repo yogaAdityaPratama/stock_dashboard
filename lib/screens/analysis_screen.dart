@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../widgets/trading_view_chart.dart';
+import '../services/api_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// ============================================================================
 /// ANALYSIS SCREEN - CORE MODULE
@@ -30,6 +34,78 @@ class AnalysisScreen extends StatefulWidget {
 }
 
 class _AnalysisScreenState extends State<AnalysisScreen> {
+  final ApiService _apiService = ApiService();
+  double? _livePrice;
+  double? _liveChange;
+  double? _liveChangePercent;
+  bool _isLiveLoading = false;
+  Map<String, dynamic>? _dynamicAnalysis;
+  bool _isAnalysisLoading = false;
+  Map<String, dynamic>? _dynamicNews;
+  bool _isNewsLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRealTimePrice();
+    _fetchDynamicAnalysis();
+    _fetchDynamicNews();
+  }
+
+  Future<void> _fetchDynamicNews() async {
+    if (!mounted) return;
+    setState(() => _isNewsLoading = true);
+    try {
+      final data = await _apiService.getStockNews(widget.stockData['code']);
+      if (mounted && data.isNotEmpty) {
+        setState(() {
+          _dynamicNews = data;
+          _isNewsLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching dynamic news: $e');
+      if (mounted) setState(() => _isNewsLoading = false);
+    }
+  }
+
+  Future<void> _fetchDynamicAnalysis() async {
+    if (!mounted) return;
+    setState(() => _isAnalysisLoading = true);
+    try {
+      final data = await _apiService.getFullAnalysis(widget.stockData['code']);
+      if (mounted && data.isNotEmpty) {
+        setState(() {
+          _dynamicAnalysis = data;
+          _isAnalysisLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching dynamic analysis: $e');
+      if (mounted) setState(() => _isAnalysisLoading = false);
+    }
+  }
+
+  Future<void> _loadRealTimePrice() async {
+    if (!mounted) return;
+    setState(() => _isLiveLoading = true);
+    try {
+      final data = await _apiService.getStockPrice(widget.stockData['code']);
+      if (mounted && data.isNotEmpty) {
+        setState(() {
+          _livePrice = data['price'];
+          _liveChange = data['change'];
+          _liveChangePercent = data['changePercent'];
+          _isLiveLoading = false;
+        });
+      } else {
+        setState(() => _isLiveLoading = false);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLiveLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const bgGradientStart = Color(0xFF1A0A2E);
@@ -46,18 +122,83 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         ),
         title: Row(
           children: [
-            Text(
-              widget.stockData['code'],
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '- ${widget.stockData['name']}',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.white70,
-                overflow: TextOverflow.ellipsis,
+            Container(
+              width: 36,
+              height: 36,
+              margin: const EdgeInsets.only(right: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  width: 1.5,
+                ),
               ),
+              child: ClipOval(
+                child: ClipOval(
+                  child: ClipOval(
+                    child: Image.asset(
+                      'asset/logos/${widget.stockData['code']}.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, assetError, assetStack) {
+                        return CachedNetworkImage(
+                          imageUrl:
+                              'https://assets.stockbit.com/logos/companies/${widget.stockData['code']}.png',
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: Colors.white.withValues(alpha: 0.05),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 12,
+                                height: 12,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white24,
+                                ),
+                              ),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) {
+                            return Center(
+                              child: Text(
+                                widget.stockData['code']
+                                    .toString()
+                                    .substring(0, 2)
+                                    .toUpperCase(),
+                                style: GoogleFonts.robotoMono(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.stockData['code'],
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  widget.stockData['name'],
+                  style: GoogleFonts.outfit(
+                    fontSize: 10,
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -96,51 +237,108 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   }
 
   Widget _buildHeaderPrice() {
-    final price = widget.stockData['current_price'] as num;
-    final currencyFormat = NumberFormat.simpleCurrency(
+    final price =
+        _livePrice ?? (widget.stockData['current_price'] as num).toDouble();
+    final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
-      name: 'Rp ',
+      symbol: 'Rp ',
       decimalDigits: 0,
     );
-    // Mock change data since backend doesn't fully provide it yet
-    final changePct = 0.75;
-    final changeVal = 65;
+
+    // Live data or fallbacks
+    final bool hasLive = _liveChangePercent != null;
+    final changePct = hasLive ? _liveChangePercent!.toStringAsFixed(2) : "--";
+    final isPositive = (_liveChange ?? 0) >= 0;
+    final color = hasLive
+        ? (isPositive ? const Color(0xFF39FF14) : Colors.redAccent)
+        : Colors.white38;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(
-              currencyFormat.format(price),
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Text(
-                '+$changePct% (+$changeVal)',
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.greenAccent,
-                  fontWeight: FontWeight.bold,
+            if (_isLiveLoading && _livePrice == null)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.cyanAccent,
                 ),
+              )
+            else
+              Text(
+                currencyFormat.format(price).replaceAll(',', '.'),
+                style: GoogleFonts.robotoMono(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: -1,
+                ),
+              ),
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: color.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isPositive
+                        ? Icons.arrow_drop_up_rounded
+                        : Icons.arrow_drop_down_rounded,
+                    color: color,
+                    size: 20,
+                  ),
+                  Text(
+                    '${isPositive ? '+' : ''}$changePct%',
+                    style: GoogleFonts.robotoMono(
+                      fontSize: 16,
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
+        ),
+        Text(
+          'Last Price (Delayed 15m)',
+          style: GoogleFonts.outfit(
+            color: Colors.white38,
+            fontSize: 10,
+            letterSpacing: 0.5,
+          ),
         ),
       ],
     );
   }
 
   Widget _buildBrokerageFlowSection() {
-    final score = (widget.stockData['analyst_score'] as num? ?? 0).toInt();
-    final bool isBullish = score > 70;
+    if (_isAnalysisLoading && _dynamicAnalysis == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(20.0),
+          child: CircularProgressIndicator(color: Colors.cyanAccent),
+        ),
+      );
+    }
+
+    final flow = _dynamicAnalysis?['brokerage_flow'] ?? {};
+    final groups =
+        flow['groups'] ?? {'status': 'NEUTRAL', 'desc': 'Scanning market...'};
+    final whale =
+        flow['whale'] ??
+        {'status': 'SIDEWAYS', 'desc': 'Monitoring whale movements...'};
+    final retail =
+        flow['retail'] ??
+        {'status': 'NORMAL', 'desc': 'Tracking retail sentiment...'};
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -161,7 +359,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
               ),
               const SizedBox(width: 8),
               const Text(
-                'BROKERAGE FLOW DETECTION',
+                'DETEKSI ARUS BANDAR', // Translated
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -172,32 +370,34 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           ),
           const SizedBox(height: 16),
           _buildFlowRow(
-            'Groups',
-            isBullish ? 'DETECTED' : 'EXITING',
-            isBullish ? Colors.greenAccent : Colors.orangeAccent,
-            isBullish
-                ? 'Institusi sedang melakukan akumulasi silent.'
-                : 'Dana besar mulai keluar dari market.',
+            'Arus Smart Money', // Translated
+            groups['status'],
+            groups['status'] == 'DETECTED'
+                ? Colors.greenAccent
+                : Colors.orangeAccent,
+            groups['desc'],
             Icons.psychology,
           ),
           const Divider(color: Colors.white10, height: 20),
           _buildFlowRow(
-            'Whale / Bandar',
-            isBullish ? 'ACTIVE BUYING' : 'DUMPING',
-            isBullish ? Colors.cyanAccent : Colors.redAccent,
-            isBullish
-                ? 'KZ, RX, AK aktif menjaga harga di area support.'
-                : 'Ditemukan aksi buang barang masif oleh broker asing.',
+            'Market Maker / Megalodon', // Quant Term
+            whale['status'],
+            whale['status'].contains('BUY')
+                ? Colors.cyanAccent
+                : Colors.redAccent,
+            whale['desc'],
             Icons.waves,
+            avgPrice: (widget.stockData['price'] * 0.96)
+                .round(), // Simulated AVG Price
           ),
           const Divider(color: Colors.white10, height: 20),
           _buildFlowRow(
-            'Retail / Crowd',
-            isBullish ? 'PANIC SELL / OUT' : 'EXTREME FOMO',
-            isBullish ? Colors.grey : Colors.yellowAccent,
-            isBullish
-                ? 'Retail banyak cut loss, barang ditampung Bandar.'
-                : 'Retail sedang agresif membeli di area pucuk (high risk).',
+            'Ritel / Kerumunan', // Translated
+            retail['status'],
+            retail['status'].contains('PANIC')
+                ? Colors.grey
+                : Colors.yellowAccent,
+            retail['desc'],
             Icons.groups,
           ),
         ],
@@ -210,8 +410,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     String status,
     Color color,
     String desc,
-    IconData icon,
-  ) {
+    IconData icon, {
+    int? avgPrice,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -222,9 +423,26 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
               children: [
                 Icon(icon, color: color.withValues(alpha: 0.7), size: 16),
                 const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
+                    ),
+                    if (avgPrice != null)
+                      Text(
+                        'AVG: ${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(avgPrice)}',
+                        style: TextStyle(
+                          color: color.withValues(alpha: 0.8),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                  ],
                 ),
               ],
             ),
@@ -266,7 +484,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${widget.stockData['code']} Real-time Technical Chart',
+                'Grafik Teknikal ${widget.stockData['code']}', // Translated & Simplified
                 style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 14,
@@ -283,15 +501,16 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             child: TradingViewChart(
               symbol: widget.stockData['code'],
               height: 350,
+              interval: 'D', // Set to Daily as default
             ),
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildChartLegend('Technical', Colors.cyanAccent),
+              _buildChartLegend('Teknikal', Colors.cyanAccent),
               _buildChartLegend('Real-time', Colors.greenAccent),
-              _buildChartLegend('AI Enhanced', Colors.purpleAccent),
+              _buildChartLegend('Analisis AI', Colors.purpleAccent),
             ],
           ),
         ],
@@ -317,86 +536,50 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   }
 
   Widget _buildAiTasksSection() {
-    // Determine Mock Statuses based on Score/Accuracy for variety
-    final score = (widget.stockData['analyst_score'] as num? ?? 0).toInt();
-    final isGood = score > 70;
-
-    final bool isBullish = isGood;
+    final dynamicTasks = _dynamicAnalysis?['ai_tasks'] ?? {};
 
     final tasks = [
       {
         'id': '1',
-        'name': 'Identifikasi Broker Dominan (Top 3-5)',
-        'status': isBullish
-            ? 'Akumulasi Kuat (Top 3: KZ, RX, LG)'
-            : 'Distribusi Terdeteksi (Seller: YP, CC, PD)',
-        'desc': isBullish
-            ? 'Broker institusi asing terlihat akumulasi bertahap dalam 5 hari terakhir dengan volume stabil.'
-            : 'Broker retail (YP, CC) mendominasi sisi beli, sementara institusi melakukan distribusi masif.',
-        'color': isBullish ? Colors.greenAccent : Colors.orangeAccent,
+        'name': '1. Supply Demand',
+        'status': dynamicTasks['supply_demand'] ?? 'Normal',
+        'color': _getColorForStatus(dynamicTasks['supply_demand']),
       },
       {
         'id': '2',
-        'name': 'Analisa Pola Akumulasi vs Distribusi',
-        'status': isBullish
-            ? 'Akumulasi Bertahap (Smart Money)'
-            : 'Distribusi Terselubung',
-        'desc': isBullish
-            ? 'Terjadi divergensi positif: Harga sideway namun Broker Summary menunjukkan net buy signifikan.'
-            : 'Harga naik dengan volume menipis, disertai aksi jual besar oleh broker dominan sektor.',
-        'color': isBullish ? Colors.greenAccent : Colors.redAccent,
+        'name': '2. Foreign Flow',
+        'status': dynamicTasks['foreign_flow'] ?? 'Neutral',
+        'color': _getColorForStatus(dynamicTasks['foreign_flow']),
       },
       {
         'id': '3',
-        'name': 'Analisa NIAT BANDAR (Intent)',
-        'status': isBullish
-            ? 'Fase Markup - Siap Dorong'
-            : 'Fase Distribusi - Buang Barang',
-        'desc': isBullish
-            ? 'Bandar sudah menguasai >60% floating shares. Prediksi fase markup akan dimulai dalam 1-3 hari.'
-            : 'Bandar mulai memancing retail masuk lewat fake bid, saat ini dalam fase exit strategis.',
-        'color': isBullish ? Colors.greenAccent : Colors.orangeAccent,
+        'name': '3. Technical Trend',
+        'status': dynamicTasks['technical_trend'] ?? 'Neutral',
+        'color': _getColorForStatus(dynamicTasks['technical_trend']),
       },
       {
         'id': '4',
-        'name': 'Level Penting (Support/Resistance)',
-        'status': isBullish ? 'S: Rp 820 | R: Rp 950' : 'S: Rp 710 | R: Rp 800',
-        'desc':
-            'Support kuat ditentukan berdasarkan rata-rata harga akumulasi bandar (Average Buy Price).',
-        'color': Colors.cyanAccent,
+        'name': '4. Momentum',
+        'status': dynamicTasks['momentum'] ?? 'Normal',
+        'color': _getColorForStatus(dynamicTasks['momentum']),
       },
       {
         'id': '5',
-        'name': 'Volume & Psikologi Market',
-        'status': isBullish
-            ? 'Volume Sehat - Partisipasi Tinggi'
-            : 'Bearish Divergence / Bull Trap',
-        'desc': isBullish
-            ? 'Fear and Greed Index menunjukkan akumulasi aman. Retail belum banyak menyadari pergerakan ini.'
-            : 'Hati-hati fake breakout. Psikologi market menunjukkan kejenuhan beli di area resistance.',
-        'color': isBullish ? Colors.yellowAccent : Colors.white70,
+        'name': '5. Valuation',
+        'status': dynamicTasks['valuation'] ?? 'Fair Value',
+        'color': _getColorForStatus(dynamicTasks['valuation']),
       },
       {
         'id': '6',
-        'name': 'STRATEGI TRADING',
-        'status': isBullish
-            ? 'BUY on Weakness / Buy Area'
-            : 'Sell Strength / Avoid',
-        'desc': isBullish
-            ? 'TP1: Rp 980 | TP2: Rp 1,050 | Stop Loss: di bawah Rp 800.'
-            : 'Tunggu konfirmasi di area support kuat. Jangan FOMO saat harga ditarik sesaat.',
-        'color': isBullish ? Colors.greenAccent : Colors.orangeAccent,
+        'name': '6. Sentiment Analysis',
+        'status': dynamicTasks['sentiment'] ?? 'Neutral',
+        'color': _getColorForStatus(dynamicTasks['sentiment']),
       },
       {
         'id': '7',
-        'name': 'KESIMPULAN AKHIR',
-        'status': isBullish
-            ? 'AKUMULASI - Cocok untuk Swing'
-            : 'HINDARI - Resiko Tinggi',
-        'desc': isBullish
-            ? 'Risk vs Reward sangat menarik (1:3). Bandar masih mengumpulkan barang di area support.'
-            : 'Struktur trend rusak. Bandar sudah keluar >40% dari total kepemilikan sebelumnya.',
-        'color': isBullish ? Colors.greenAccent : Colors.redAccent,
+        'name': '7. Risk Assessment',
+        'status': dynamicTasks['risk'] ?? 'Moderate',
+        'color': _getColorForStatus(dynamicTasks['risk']),
       },
     ];
 
@@ -410,77 +593,105 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text(
+            'AI ANALYSIS TASKS',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
           const SizedBox(height: 16),
-          Column(
-            children: tasks.map((task) {
-              return Container(
-                width: double.infinity,
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white12),
+          if (_isAnalysisLoading && _dynamicAnalysis == null)
+            const Center(
+              child: CircularProgressIndicator(color: Colors.purpleAccent),
+            )
+          else
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 3.5,
+              ),
+              itemCount: tasks.length,
+              itemBuilder: (context, index) {
+                final task = tasks[index];
+                return _buildTaskItem(task);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTaskItem(Map<String, dynamic> task) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _getIconForTask(task['id'] as String),
+            size: 14,
+            color: task['color'] as Color,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  task['name'] as String,
+                  style: const TextStyle(color: Colors.white70, fontSize: 9),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: (task['color'] as Color).withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        _getIconForTask(task['id'] as String),
-                        size: 16,
-                        color: task['color'] as Color,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            task['name'] as String,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            task['status'] as String,
-                            style: TextStyle(
-                              color: task['color'] as Color,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          if (task['desc'] != null) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              task['desc'] as String,
-                              style: const TextStyle(
-                                color: Colors.white38,
-                                fontSize: 11,
-                                height: 1.4,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
+                Text(
+                  task['status'] as String,
+                  style: TextStyle(
+                    color: task['color'] as Color,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              );
-            }).toList(),
+              ],
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Color _getColorForStatus(String? status) {
+    if (status == null) return Colors.white54;
+    final s = status.toLowerCase();
+    if (s.contains('strong') ||
+        s.contains('buy') ||
+        s.contains('bullish') ||
+        s.contains('optimistic') ||
+        s.contains('low') ||
+        s.contains('undervalued') ||
+        s.contains('positive')) {
+      return Colors.greenAccent;
+    }
+    if (s.contains('weak') ||
+        s.contains('sell') ||
+        s.contains('bearish') ||
+        s.contains('pessimistic') ||
+        s.contains('high') ||
+        s.contains('overvalued') ||
+        s.contains('negative')) {
+      return Colors.redAccent;
+    }
+    return Colors.yellowAccent;
   }
 
   IconData _getIconForTask(String id) {
@@ -505,105 +716,157 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   }
 
   Widget _buildBigNewsSection() {
-    final bool isReverseMerger = widget.stockData['is_reverse_merger'] ?? false;
-    final String stockTicker = widget.stockData['code'];
+    final newsText =
+        _dynamicNews?['news'] ?? 'Loading latest market updates...';
+    final newsTime =
+        _dynamicNews?['time'] ??
+        DateFormat('MMM dd, yyyy, hh:mm a').format(DateTime.now());
+    final newsImpact =
+        _dynamicNews?['impact_detail'] ?? 'Analyzing potential price impact...';
+    final newsImage = _dynamicNews?['image'];
+    final newsUrl = _dynamicNews?['url'];
 
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A1B3D).withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)),
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.orangeAccent.withValues(alpha: 0.8),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(15),
-                topRight: Radius.circular(15),
+    return GestureDetector(
+      onTap: () async {
+        if (newsUrl != null) {
+          final uri = Uri.parse(newsUrl);
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF2A1B3D).withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withValues(alpha: 0.8),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(15),
+                  topRight: Radius.circular(15),
+                ),
+              ),
+              child: Row(
+                children: const [
+                  Icon(
+                    Icons.notifications_active,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'BIG NEWS 🚨',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.flash_on, color: Colors.white, size: 18),
-                const SizedBox(width: 8),
-                const Text(
-                  'BREAKING: CORPORATE ACTION',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
+            if (_isNewsLoading && _dynamicNews == null)
+              const Padding(
+                padding: EdgeInsets.all(20.0),
+                child: Center(
+                  child: CircularProgressIndicator(color: Colors.redAccent),
                 ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isReverseMerger
-                      ? "STRATEGIC MERGER: $stockTicker and ${widget.stockData['news_multibagger']} back-door listing confirmation."
-                      : "$stockTicker Corporate Restructuring: Intelligence report suggests potential asset acquisition.",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'SOURCE: AI Intelligence Data Feed',
-                  style: TextStyle(
-                    color: Colors.orangeAccent,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                RichText(
-                  text: TextSpan(
-                    children: [
-                      const TextSpan(
-                        text: 'Analysis: ',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontWeight: FontWeight.bold,
-                        ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            newsText,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'BREAKING: $newsTime',
+                            style: const TextStyle(
+                              color: Colors.white54,
+                              fontSize: 10,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          RichText(
+                            text: TextSpan(
+                              style: const TextStyle(fontSize: 12, height: 1.4),
+                              children: [
+                                const TextSpan(
+                                  text: 'Impact: ',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: newsImpact,
+                                  style: const TextStyle(color: Colors.white70),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      TextSpan(
-                        text: isReverseMerger
-                            ? "This activity matches 'Reverse Merger' patterns. Volatility expected to increase significantly."
-                            : "High probability of value unlocking through new commercial synergy.",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
+                    ),
+                    if (newsImage != null) ...[
+                      const SizedBox(width: 12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          newsImage,
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const SizedBox.shrink(),
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.bottomRight,
-                  child: OutlinedButton(
-                    onPressed: () {},
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.orangeAccent),
-                      foregroundColor: Colors.orangeAccent,
+              ),
+            Padding(
+              padding: const EdgeInsets.only(right: 16, bottom: 12),
+              child: Align(
+                alignment: Alignment.bottomRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Text(
+                      'Source: Google News',
+                      style: TextStyle(color: Colors.white38, fontSize: 10),
                     ),
-                    child: const Text('FULL REPORT'),
-                  ),
+                    SizedBox(width: 4),
+                    Icon(Icons.open_in_new, color: Colors.white38, size: 12),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

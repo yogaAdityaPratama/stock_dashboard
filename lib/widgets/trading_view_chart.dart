@@ -23,11 +23,15 @@ class TradingViewChart extends StatefulWidget {
   /// Tinggi widget
   final double height;
 
+  /// Interval grafik ('1', '5', '15', '60', 'D', 'W')
+  final String interval;
+
   const TradingViewChart({
     super.key,
     required this.symbol,
     this.theme = 'dark',
     this.height = 300,
+    this.interval = 'D',
   });
 
   @override
@@ -65,12 +69,14 @@ class _TradingViewChartState extends State<TradingViewChart> {
           },
         ),
       )
-      ..loadHtmlString(_getHtmlContent(formattedSymbol, widget.theme));
+      ..loadHtmlString(
+        _getHtmlContent(formattedSymbol, widget.theme, widget.interval),
+      );
   }
 
   /// Menghasilkan konten HTML untuk widget TradingView
   /// Menggunakan Template String untuk injeksi parameter
-  String _getHtmlContent(String symbol, String theme) {
+  String _getHtmlContent(String symbol, String theme, String interval) {
     return '''
     <!DOCTYPE html>
     <html lang="id">
@@ -99,7 +105,7 @@ class _TradingViewChartState extends State<TradingViewChart> {
         new TradingView.widget({
           "autosize": true,
           "symbol": "$symbol",
-          "interval": "D",
+          "interval": "$interval",
           "timezone": "Asia/Jakarta",
           "theme": "$theme",
           "style": "1",

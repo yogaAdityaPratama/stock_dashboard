@@ -200,9 +200,16 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
                       )
                     : _errorMessage != null
                     ? Center(
-                        child: Text(
-                          _errorMessage!,
-                          style: const TextStyle(color: Colors.red),
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Text(
+                            'AI Engine Offline\nCheck backend connectivity',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.outfit(
+                              color: Colors.redAccent.withValues(alpha: 0.7),
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
                       )
                     : _buildStockList(),
@@ -327,17 +334,17 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
         onTap: _showTacticalSelector,
         borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: const Color(0xFFC800FF).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: const Color(0xFFC800FF).withValues(alpha: 0.3),
             ),
             boxShadow: [
               BoxShadow(
                 color: const Color(0xFFC800FF).withValues(alpha: 0.05),
-                blurRadius: 15,
+                blurRadius: 10,
                 spreadRadius: 1,
               ),
             ],
@@ -345,7 +352,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: const Color(0xFFC800FF).withValues(alpha: 0.2),
                   shape: BoxShape.circle,
@@ -353,10 +360,10 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
                 child: const Icon(
                   Icons.bolt_rounded,
                   color: Color(0xFFC800FF),
-                  size: 28,
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: 20),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,17 +372,17 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
                       'ACTIVE AI STRATEGY',
                       style: TextStyle(
                         color: Color(0xFFC800FF),
-                        fontSize: 10,
+                        fontSize: 9,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 1.5,
+                        letterSpacing: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       _selectedTactical,
                       style: GoogleFonts.outfit(
                         color: Colors.white,
-                        fontSize: 22,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -401,18 +408,18 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
     );
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0xFF2A1B3D).withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: const Color(0xFF8A2BE2).withValues(alpha: 0.5),
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF8A2BE2).withValues(alpha: 0.2),
-            blurRadius: 10,
+            color: const Color(0xFF8A2BE2).withValues(alpha: 0.1),
+            blurRadius: 8,
             spreadRadius: 1,
           ),
         ],
@@ -431,7 +438,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
                 children: [
                   const Text(
                     'Price Range',
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                    style: TextStyle(color: Colors.white70, fontSize: 11),
                   ),
                   Text(
                     '${currencyFormat.format(_priceRange.start)} - ${currencyFormat.format(_priceRange.end)}',
@@ -485,7 +492,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
                 children: [
                   const Text(
                     'AI Score Filter',
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                    style: TextStyle(color: Colors.white70, fontSize: 11),
                   ),
                   Text(
                     '${_aiScoreRange.start.toInt()}% - ${_aiScoreRange.end.toInt()}%',
@@ -631,7 +638,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
           _buildFilterRow(
             label: 'PER < 15',
             child: Transform.scale(
-              scale: 0.8,
+              scale: 0.7,
               child: Switch(
                 value: _perFilter,
                 activeColor: const Color(0xFFBB86FC),
@@ -645,12 +652,12 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
             ),
             trailingText: '< 15',
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           // ROE Toggle
           _buildFilterRow(
             label: 'ROE > 15%',
             child: Transform.scale(
-              scale: 0.8,
+              scale: 0.7,
               child: Switch(
                 value: _roeFilter,
                 activeColor: const Color(0xFFBB86FC),
@@ -675,7 +682,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
     String? trailingText,
   }) {
     return Container(
-      height: 36,
+      height: 28,
       decoration: BoxDecoration(
         // Optional: Add subtle borders to rows if needed like the image
         border: Border(
@@ -688,7 +695,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
             width: 80,
             child: Text(
               label,
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
+              style: const TextStyle(color: Colors.white70, fontSize: 11),
             ),
           ),
           const SizedBox(width: 8),
@@ -719,12 +726,12 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
       child: Row(
-        children: const [
+        children: [
           Expanded(
             flex: 3,
             child: Text(
               'Code',
-              style: TextStyle(color: Colors.white60, fontSize: 12),
+              style: GoogleFonts.outfit(color: Colors.white60, fontSize: 10),
             ),
           ),
           Expanded(
@@ -732,7 +739,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
             child: Text(
               'Price',
               textAlign: TextAlign.right,
-              style: TextStyle(color: Colors.white60, fontSize: 12),
+              style: GoogleFonts.outfit(color: Colors.white60, fontSize: 10),
             ),
           ),
           Expanded(
@@ -740,9 +747,9 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
             child: Text(
               'AI Score',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: GoogleFonts.outfit(
                 color: Colors.cyanAccent,
-                fontSize: 12,
+                fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -752,7 +759,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
             child: Text(
               'ML Acc %',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white60, fontSize: 12),
+              style: GoogleFonts.outfit(color: Colors.white60, fontSize: 10),
             ),
           ),
           Expanded(
@@ -760,7 +767,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
             child: Text(
               'Rev. M',
               textAlign: TextAlign.right,
-              style: TextStyle(color: Colors.white60, fontSize: 12),
+              style: GoogleFonts.outfit(color: Colors.white60, fontSize: 10),
             ),
           ),
         ],
@@ -806,7 +813,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
           },
           child: Container(
             margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
             decoration: BoxDecoration(
               gradient: isHighTier
                   ? LinearGradient(
@@ -906,7 +913,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
 
   Widget _buildBottomButton() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
@@ -920,7 +927,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
       child: GestureDetector(
         onTap: _runScreening,
         child: Container(
-          height: 56,
+          height: 50,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [Color(0xFF6A00F4), Color(0xFFC800FF)],
@@ -995,16 +1002,16 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
 
   Widget _buildScreeningDisclaimer() {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.02),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: const Text(
         'DISCLAIMER: Sistem AI Screening menggunakan algoritma pembelajaran mesin untuk analisis saham. Hasil screening bersifat informatif dan tidak menjamin keuntungan investasi. Score dan rekomendasi yang diberikan AI adalah prediksi berdasarkan data historis dan pola pasar, bukan saran investasi profesional. Selalu lakukan analisis fundamental dan teknikal mandiri (DYOR) sebelum berinvestasi. Keputusan dan risiko investasi sepenuhnya tanggung jawab Anda.',
         textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.grey, fontSize: 10),
+        style: TextStyle(color: Colors.grey, fontSize: 8),
       ),
     );
   }
