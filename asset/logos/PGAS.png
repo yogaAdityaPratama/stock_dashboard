@@ -1,0 +1,9 @@
+<!DOCTYPE html> <!-- <div>
+    {
+      page && page.page && page.page.template && page.page.template.slug === "template1" ? (
+        <Template1 lang={lang} dataPage={page}/>
+      ) : page && page.page && page.page.template && page.page.template.slug === "template10" ? (
+        <Template10 lang={lang} dataPage={page}/>
+      ) : <Template1 lang={lang} dataPage={page}/>
+    }
+</div> -->

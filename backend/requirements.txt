@@ -1,0 +1,8 @@
+flask
+flask-cors
+requests
+pandas
+scikit-learn
+numpy
+gunicorn
+vaderSentiment

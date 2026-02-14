@@ -1,0 +1,26 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Flutter App",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "Flask Backend",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend/app.py",
+            "console": "integratedTerminal"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Full App (Backend + Flutter)",
+            "configurations": [
+                "Flask Backend",
+                "Flutter App"
+            ]
+        }
+    ]
+}
