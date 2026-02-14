@@ -85,8 +85,10 @@ class _MainContainerState extends State<MainContainer> {
         decoration: BoxDecoration(
           color: const Color(
             0xFF1A0A2E,
-          ).withOpacity(0.8), // Translucent dark purple
-          border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
+          ).withValues(alpha: 0.8), // Translucent dark purple
+          border: Border(
+            top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+          ),
         ),
         child: ClipRRect(
           child: BackdropFilter(
@@ -162,7 +164,7 @@ class DashboardScreen extends StatelessWidget {
             fit: BoxFit.fitWidth,
             alignment: Alignment.topCenter,
             colorFilter: ColorFilter.mode(
-              Colors.black.withOpacity(0.6),
+              Colors.black.withValues(alpha: 0.6),
               BlendMode.darken,
             ),
           ),
@@ -183,10 +185,10 @@ class DashboardScreen extends StatelessWidget {
                 height: 300,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFF8A2BE2).withOpacity(0.2),
+                  color: const Color(0xFF8A2BE2).withValues(alpha: 0.2),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF8A2BE2).withOpacity(0.3),
+                      color: const Color(0xFF8A2BE2).withValues(alpha: 0.3),
                       blurRadius: 100,
                       spreadRadius: 50,
                     ),
@@ -202,10 +204,10 @@ class DashboardScreen extends StatelessWidget {
                 height: 200,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.cyanAccent.withOpacity(0.1),
+                  color: Colors.cyanAccent.withValues(alpha: 0.1),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.cyanAccent.withOpacity(0.15),
+                      color: Colors.cyanAccent.withValues(alpha: 0.15),
                       blurRadius: 80,
                       spreadRadius: 40,
                     ),
@@ -266,15 +268,18 @@ class DashboardScreen extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white.withOpacity(0.15),
-                Colors.white.withOpacity(0.02),
+                Colors.white.withValues(alpha: 0.15),
+                Colors.white.withValues(alpha: 0.02),
               ],
             ),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.25),
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 blurRadius: 25,
                 offset: const Offset(0, 10),
               ),
@@ -306,12 +311,12 @@ class DashboardScreen extends StatelessWidget {
                           const FlSpot(7, 7),
                         ],
                         isCurved: true,
-                        color: Colors.white.withOpacity(0.1),
+                        color: Colors.white.withValues(alpha: 0.1),
                         barWidth: 3,
                         dotData: FlDotData(show: false),
                         belowBarData: BarAreaData(
                           show: true,
-                          color: Colors.white.withOpacity(0.05),
+                          color: Colors.white.withValues(alpha: 0.05),
                         ),
                       ),
                     ],
@@ -345,7 +350,7 @@ class DashboardScreen extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.greenAccent.withOpacity(0.2),
+                      color: Colors.greenAccent.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -507,12 +512,12 @@ class DashboardScreen extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withOpacity(0.06),
-                  Colors.white.withOpacity(0.01),
+                  Colors.white.withValues(alpha: 0.06),
+                  Colors.white.withValues(alpha: 0.01),
                 ],
               ),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -520,7 +525,7 @@ class DashboardScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.15),
+                    color: accentColor.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(icon, color: accentColor, size: 20),
@@ -629,15 +634,15 @@ class DashboardScreen extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white.withOpacity(0.1),
-                Colors.white.withOpacity(0.01),
+                Colors.white.withValues(alpha: 0.1),
+                Colors.white.withValues(alpha: 0.01),
               ],
             ),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.15)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -711,12 +716,12 @@ class DashboardScreen extends StatelessWidget {
                       LineChartBarData(
                         spots: spots,
                         isCurved: true,
-                        color: color.withOpacity(0.8),
+                        color: color.withValues(alpha: 0.8),
                         barWidth: 2,
                         dotData: FlDotData(show: false),
                         belowBarData: BarAreaData(
                           show: true,
-                          color: color.withOpacity(0.2),
+                          color: color.withValues(alpha: 0.2),
                         ),
                       ),
                     ],
@@ -734,15 +739,15 @@ class DashboardScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
+        color: Colors.white.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Text(
         'DISCLAIMER: Nilai portofolio dan kinerja saham yang ditampilkan hanya untuk tujuan informasi. Kinerja masa lalu tidak menjamin hasil di masa depan. Selalu lakukan riset menyeluruh sebelum mengambil keputusan investasi.',
         textAlign: TextAlign.center,
         style: GoogleFonts.outfit(
-          color: Colors.grey.withOpacity(0.6),
+          color: Colors.grey.withValues(alpha: 0.6),
           fontSize: 10,
         ),
       ),

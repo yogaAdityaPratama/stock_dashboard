@@ -156,7 +156,7 @@ class _WatchlistScreenState extends State<WatchlistScreen>
               Icon(
                 Icons.list_alt,
                 size: 64,
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
               ),
               const SizedBox(height: 16),
               Text(
@@ -219,9 +219,9 @@ class _WatchlistScreenState extends State<WatchlistScreen>
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -263,7 +263,7 @@ class _WatchlistScreenState extends State<WatchlistScreen>
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
+                    color: color.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(

@@ -98,9 +98,9 @@ class _ForecastScreenState extends State<ForecastScreen> {
       padding: const EdgeInsets.all(20),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
+        color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Row(
         children: [
@@ -147,11 +147,11 @@ class _ForecastScreenState extends State<ForecastScreen> {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: accuracy > 85
-                ? Colors.cyanAccent.withOpacity(0.3)
+                ? Colors.cyanAccent.withValues(alpha: 0.3)
                 : Colors.white10,
           ),
         ),
@@ -186,10 +186,10 @@ class _ForecastScreenState extends State<ForecastScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.blueAccent.withOpacity(0.1),
+                    color: Colors.blueAccent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: Colors.blueAccent.withOpacity(0.3),
+                      color: Colors.blueAccent.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(

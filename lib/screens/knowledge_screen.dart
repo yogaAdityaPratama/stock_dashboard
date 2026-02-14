@@ -877,16 +877,16 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF8A2BE2).withOpacity(0.2),
+              color: const Color(0xFF8A2BE2).withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: const Color(0xFFC800FF), size: 28),
@@ -934,7 +934,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
               hintStyle: const TextStyle(color: Colors.white24),
               prefixIcon: const Icon(Icons.search, color: Colors.white54),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.05),
+              fillColor: Colors.white.withValues(alpha: 0.05),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -973,13 +973,13 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            Colors.white.withOpacity(0.08),
-                            Colors.white.withOpacity(0.02),
+                            Colors.white.withValues(alpha: 0.08),
+                            Colors.white.withValues(alpha: 0.02),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.12),
+                          color: Colors.white.withValues(alpha: 0.12),
                         ),
                       ),
                       child: Column(
@@ -988,7 +988,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: accentColor.withOpacity(0.1),
+                              color: accentColor.withValues(alpha: 0.1),
                               shape: BoxShape.circle,
                             ),
                             child: Text(
@@ -1050,9 +1050,9 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
+              color: Colors.white.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1060,7 +1060,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFC800FF).withOpacity(0.1),
+                    color: const Color(0xFFC800FF).withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Text(
@@ -1110,9 +1110,11 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1160,16 +1162,16 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
                                 vertical: 5,
                               ),
                               decoration: BoxDecoration(
-                                color: color.withOpacity(0.15),
+                                color: color.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: color.withOpacity(0.6),
+                                  color: color.withValues(alpha: 0.6),
                                   width: 1.5,
                                 ),
                                 boxShadow: [
                                   if (status != 'normal')
                                     BoxShadow(
-                                      color: color.withOpacity(0.2),
+                                      color: color.withValues(alpha: 0.2),
                                       blurRadius: 4,
                                       spreadRadius: 1,
                                     ),
@@ -1208,9 +1210,9 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
           margin: const EdgeInsets.only(bottom: 20),
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1220,7 +1222,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFC800FF).withOpacity(0.2),
+                      color: const Color(0xFFC800FF).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
@@ -1294,7 +1296,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFC800FF).withOpacity(0.2),
+                      color: const Color(0xFFC800FF).withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: Text(
@@ -1397,9 +1399,11 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                 ),
                 child: Text(
                   item['desc'] ??
@@ -1446,9 +1450,9 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.03),
+          color: Colors.white.withValues(alpha: 0.03),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1508,7 +1512,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.only(bottom: 20, left: 16, right: 16),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.5),
+        color: Colors.black.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white10),
       ),
@@ -1530,7 +1534,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
           width: 10,
           height: 10,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.3),
+            color: color.withValues(alpha: 0.3),
             shape: BoxShape.circle,
             border: Border.all(color: color),
           ),

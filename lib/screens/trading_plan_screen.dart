@@ -94,12 +94,12 @@ class TradingPlanScreen extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.white.withOpacity(0.1),
-            Colors.white.withOpacity(0.05),
+            Colors.white.withValues(alpha: 0.1),
+            Colors.white.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,8 +119,8 @@ class TradingPlanScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: isActive
-                      ? Colors.greenAccent.withOpacity(0.2)
-                      : Colors.orangeAccent.withOpacity(0.2),
+                      ? Colors.greenAccent.withValues(alpha: 0.2)
+                      : Colors.orangeAccent.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -171,9 +171,9 @@ class TradingPlanScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
+        color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         children: [
@@ -213,7 +213,7 @@ class TradingPlanScreen extends StatelessWidget {
         hintText: hint,
         hintStyle: const TextStyle(color: Colors.white24),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.05),
+        fillColor: Colors.white.withValues(alpha: 0.05),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,

@@ -248,7 +248,7 @@ class _CalculatorScreenState extends State<CalculatorScreen>
                     dotData: FlDotData(show: false),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: const Color(0xFFC800FF).withOpacity(0.2),
+                      color: const Color(0xFFC800FF).withValues(alpha: 0.2),
                     ),
                   ),
                 ],
@@ -396,12 +396,12 @@ class _CalculatorScreenState extends State<CalculatorScreen>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                const Color(0xFF4B0082).withOpacity(0.5),
-                const Color(0xFF301934).withOpacity(0.3),
+                const Color(0xFF4B0082).withValues(alpha: 0.5),
+                const Color(0xFF301934).withValues(alpha: 0.3),
               ],
             ),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
           ),
           child: Column(
             children: [
@@ -473,7 +473,7 @@ class _CalculatorScreenState extends State<CalculatorScreen>
             activeTrackColor: const Color(0xFFC800FF),
             inactiveTrackColor: Colors.white10,
             thumbColor: Colors.white,
-            overlayColor: const Color(0xFFC800FF).withOpacity(0.2),
+            overlayColor: const Color(0xFFC800FF).withValues(alpha: 0.2),
           ),
           child: Slider(value: value, min: min, max: max, onChanged: onChanged),
         ),
@@ -492,7 +492,7 @@ class _CalculatorScreenState extends State<CalculatorScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.2) : Colors.transparent,
+          color: isSelected ? color.withValues(alpha: 0.2) : Colors.transparent,
           border: Border.all(color: isSelected ? color : Colors.white24),
           borderRadius: BorderRadius.circular(20),
         ),
@@ -543,15 +543,15 @@ class _CalculatorScreenState extends State<CalculatorScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
+        color: Colors.white.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Text(
         'DISCLAIMER: Semua proyeksi dan perhitungan adalah estimasi berdasarkan asumsi tingkat pengembalian, inflasi, dan skenario pajak. Kinerja investasi aktual dapat berbeda secara signifikan. Kondisi pasar, faktor ekonomi, dan keadaan individu dapat mempengaruhi hasil. Alat ini hanya untuk tujuan edukasi dan bukan merupakan nasihat keuangan. Konsultasikan dengan penasihat keuangan yang berkualifikasi sebelum mengambil keputusan investasi.',
         textAlign: TextAlign.center,
         style: GoogleFonts.outfit(
-          color: Colors.grey.withOpacity(0.6),
+          color: Colors.grey.withValues(alpha: 0.6),
           fontSize: 10,
         ),
       ),

@@ -174,7 +174,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
             fit: BoxFit.fitWidth,
             alignment: Alignment.topCenter,
             colorFilter: ColorFilter.mode(
-              Colors.black.withOpacity(0.7),
+              Colors.black.withValues(alpha: 0.7),
               BlendMode.darken,
             ),
           ),
@@ -289,13 +289,13 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFFC800FF).withOpacity(0.2)
-                            : Colors.white.withOpacity(0.05),
+                            ? const Color(0xFFC800FF).withValues(alpha: 0.2)
+                            : Colors.white.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: isSelected
                               ? const Color(0xFFC800FF)
-                              : Colors.white.withOpacity(0.1),
+                              : Colors.white.withValues(alpha: 0.1),
                         ),
                       ),
                       alignment: Alignment.center,
@@ -329,12 +329,14 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color(0xFFC800FF).withOpacity(0.1),
+            color: const Color(0xFFC800FF).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFC800FF).withOpacity(0.3)),
+            border: Border.all(
+              color: const Color(0xFFC800FF).withValues(alpha: 0.3),
+            ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFC800FF).withOpacity(0.05),
+                color: const Color(0xFFC800FF).withValues(alpha: 0.05),
                 blurRadius: 15,
                 spreadRadius: 1,
               ),
@@ -345,7 +347,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFC800FF).withOpacity(0.2),
+                  color: const Color(0xFFC800FF).withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -402,12 +404,14 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF2A1B3D).withOpacity(0.6),
+        color: const Color(0xFF2A1B3D).withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF8A2BE2).withOpacity(0.5)),
+        border: Border.all(
+          color: const Color(0xFF8A2BE2).withValues(alpha: 0.5),
+        ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF8A2BE2).withOpacity(0.2),
+            color: const Color(0xFF8A2BE2).withValues(alpha: 0.2),
             blurRadius: 10,
             spreadRadius: 1,
           ),
@@ -444,7 +448,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
                   activeTrackColor: const Color(0xFFBB86FC),
                   inactiveTrackColor: Colors.white24,
                   thumbColor: Colors.cyanAccent,
-                  overlayColor: const Color(0xFFBB86FC).withOpacity(0.2),
+                  overlayColor: const Color(0xFFBB86FC).withValues(alpha: 0.2),
                   trackHeight: 2,
                   thumbShape: const RoundSliderThumbShape(
                     enabledThumbRadius: 6,
@@ -498,7 +502,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
                   activeTrackColor: const Color(0xFFBB86FC),
                   inactiveTrackColor: Colors.white24,
                   thumbColor: Colors.cyanAccent,
-                  overlayColor: const Color(0xFFBB86FC).withOpacity(0.2),
+                  overlayColor: const Color(0xFFBB86FC).withValues(alpha: 0.2),
                   trackHeight: 2,
                   thumbShape: const RoundSliderThumbShape(
                     enabledThumbRadius: 6,
@@ -561,7 +565,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(color: Colors.white24),
                     ),
@@ -609,7 +613,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(color: Colors.white24),
                     ),
@@ -631,7 +635,9 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
               child: Switch(
                 value: _perFilter,
                 activeColor: const Color(0xFFBB86FC),
-                activeTrackColor: const Color(0xFFBB86FC).withOpacity(0.3),
+                activeTrackColor: const Color(
+                  0xFFBB86FC,
+                ).withValues(alpha: 0.3),
                 inactiveThumbColor: Colors.grey,
                 inactiveTrackColor: Colors.black,
                 onChanged: (v) => setState(() => _perFilter = v),
@@ -648,7 +654,9 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
               child: Switch(
                 value: _roeFilter,
                 activeColor: const Color(0xFFBB86FC),
-                activeTrackColor: const Color(0xFFBB86FC).withOpacity(0.3),
+                activeTrackColor: const Color(
+                  0xFFBB86FC,
+                ).withValues(alpha: 0.3),
                 inactiveThumbColor: Colors.grey,
                 inactiveTrackColor: Colors.black,
                 onChanged: (v) => setState(() => _roeFilter = v),
@@ -671,7 +679,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
       decoration: BoxDecoration(
         // Optional: Add subtle borders to rows if needed like the image
         border: Border(
-          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
         ),
       ),
       child: Row(
@@ -690,10 +698,10 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
               margin: const EdgeInsets.only(left: 8),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: const Color(0xFFBB86FC).withOpacity(0.2),
+                color: const Color(0xFFBB86FC).withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(
-                  color: const Color(0xFFBB86FC).withOpacity(0.5),
+                  color: const Color(0xFFBB86FC).withValues(alpha: 0.5),
                 ),
               ),
               child: Text(
@@ -803,20 +811,20 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
               gradient: isHighTier
                   ? LinearGradient(
                       colors: [
-                        const Color(0xFF4B0082).withOpacity(0.6),
-                        const Color(0xFF8A2BE2).withOpacity(0.3),
+                        const Color(0xFF4B0082).withValues(alpha: 0.6),
+                        const Color(0xFF8A2BE2).withValues(alpha: 0.3),
                       ],
                     )
                   : null,
-              color: isHighTier ? null : Colors.white.withOpacity(0.05),
+              color: isHighTier ? null : Colors.white.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(8),
               border: isHighTier
-                  ? Border.all(color: Colors.cyanAccent.withOpacity(0.5))
+                  ? Border.all(color: Colors.cyanAccent.withValues(alpha: 0.5))
                   : Border.all(color: Colors.white10),
               boxShadow: isHighTier
                   ? [
                       BoxShadow(
-                        color: Colors.cyanAccent.withOpacity(0.1),
+                        color: Colors.cyanAccent.withValues(alpha: 0.1),
                         blurRadius: 8,
                       ),
                     ]
@@ -856,7 +864,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
                       fontWeight: FontWeight.bold,
                       shadows: [
                         Shadow(
-                          color: Colors.cyanAccent.withOpacity(0.8),
+                          color: Colors.cyanAccent.withValues(alpha: 0.8),
                           blurRadius: 8,
                         ),
                       ],
@@ -905,7 +913,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
           end: Alignment.bottomCenter,
           colors: [
             Colors.transparent,
-            const Color(0xFF1A0A2E).withOpacity(0.9),
+            const Color(0xFF1A0A2E).withValues(alpha: 0.9),
           ],
         ),
       ),
@@ -920,12 +928,12 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFC800FF).withOpacity(0.5),
+                color: const Color(0xFFC800FF).withValues(alpha: 0.5),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
             ],
-            border: Border.all(color: Colors.white.withOpacity(0.2)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -953,9 +961,9 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
       margin: const EdgeInsets.only(top: 20, bottom: 40),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
+        color: Colors.black.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
@@ -989,9 +997,9 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
+        color: Colors.white.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: const Text(
         'DISCLAIMER: Sistem AI Screening menggunakan algoritma pembelajaran mesin untuk analisis saham. Hasil screening bersifat informatif dan tidak menjamin keuntungan investasi. Score dan rekomendasi yang diberikan AI adalah prediksi berdasarkan data historis dan pola pasar, bukan saran investasi profesional. Selalu lakukan analisis fundamental dan teknikal mandiri (DYOR) sebelum berinvestasi. Keputusan dan risiko investasi sepenuhnya tanggung jawab Anda.',

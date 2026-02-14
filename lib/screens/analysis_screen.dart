@@ -145,7 +145,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF2A1B3D).withOpacity(0.5),
+        color: const Color(0xFF2A1B3D).withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white10),
       ),
@@ -220,7 +220,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           children: [
             Row(
               children: [
-                Icon(icon, color: color.withOpacity(0.7), size: 16),
+                Icon(icon, color: color.withValues(alpha: 0.7), size: 16),
                 const SizedBox(width: 8),
                 Text(
                   label,
@@ -231,9 +231,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: color.withOpacity(0.3)),
+                border: Border.all(color: color.withValues(alpha: 0.3)),
               ),
               child: Text(
                 status,
@@ -256,7 +256,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF2A1B3D).withOpacity(0.5),
+        color: const Color(0xFF2A1B3D).withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white10),
       ),
@@ -403,7 +403,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF2A1B3D).withOpacity(0.5),
+        color: const Color(0xFF2A1B3D).withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white10),
       ),
@@ -418,7 +418,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.white12),
                 ),
@@ -428,7 +428,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: (task['color'] as Color).withOpacity(0.1),
+                        color: (task['color'] as Color).withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -510,9 +510,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF2A1B3D).withOpacity(0.5),
+        color: const Color(0xFF2A1B3D).withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.orangeAccent.withOpacity(0.5)),
+        border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)),
       ),
       child: Column(
         children: [
@@ -520,7 +520,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.orangeAccent.withOpacity(0.8),
+              color: Colors.orangeAccent.withValues(alpha: 0.8),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(15),
                 topRight: Radius.circular(15),
@@ -612,9 +612,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
+        color: Colors.black.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
