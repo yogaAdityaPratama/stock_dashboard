@@ -384,7 +384,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           ),
           const Divider(color: Colors.white10, height: 20),
           _buildFlowRow(
-            'Market Maker / Megalodon', // Quant Term
+            'Market Maker', // Quant Term
             whale['status'],
             whale['status'].contains('BUY')
                 ? Colors.cyanAccent
@@ -396,7 +396,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           ),
           const Divider(color: Colors.white10, height: 20),
           _buildFlowRow(
-            'Ritel / Kerumunan', // Translated
+            'Ritel', // Translated
             retail['status'],
             retail['status'].contains('PANIC')
                 ? Colors.grey
