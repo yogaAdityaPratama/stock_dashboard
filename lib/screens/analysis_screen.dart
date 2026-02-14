@@ -57,9 +57,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     setState(() => _isNewsLoading = true);
     try {
       final data = await _apiService.getStockNews(widget.stockData['code']);
-      if (mounted && data.isNotEmpty) {
+      if (mounted) {
         setState(() {
-          _dynamicNews = data;
+          if (data.isNotEmpty) {
+            _dynamicNews = data;
+          }
           _isNewsLoading = false;
         });
       }
@@ -74,9 +76,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     setState(() => _isAnalysisLoading = true);
     try {
       final data = await _apiService.getFullAnalysis(widget.stockData['code']);
-      if (mounted && data.isNotEmpty) {
+      if (mounted) {
         setState(() {
-          _dynamicAnalysis = data;
+          if (data.isNotEmpty) {
+            _dynamicAnalysis = data;
+          }
           _isAnalysisLoading = false;
         });
       }
@@ -898,7 +902,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Charts and AI forecasts are hypothetical simulations based on historical data. Past performance does not guarantee future results. Invest responsibly.',
+            'Seluruh data, grafik, dan prediksi AI adalah simulasi hipotesis berdasarkan data historis. Performa masa lalu tidak menjamin hasil di masa depan. Berinvestasilah dengan bijak dan lakukan riset mandiri (Do Your Own Research).',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey, fontSize: 10),
           ),

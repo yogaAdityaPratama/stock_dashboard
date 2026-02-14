@@ -11,7 +11,6 @@ import random
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 import html
-import concurrent.futures
 
 app = Flask(__name__)
 CORS(app) # Enable CORS for Flutter frontend
@@ -241,12 +240,25 @@ def forecast_stock():
 # TV Scanner Constants
 TV_SCANNER_URL = "https://scanner.tradingview.com/indonesia/scan"
 
+# Optimized Cache for Market Dynamics (24h for MSCI/Hype)
+_dynamics_cache = None
+_dynamics_last_fetch = None
+DYNAMICS_CACHE_DURATION = 86400 # 24 hours
+
 @app.route('/api/market-dynamics', methods=['GET'])
 def get_market_dynamics():
     """
     Highly optimized endpoint to fetch top gainers, losers, and index stocks.
-    Uses TradingView Scanner logic for reliability and speed.
+    Implemented 24-hour caching for MSCI and Hype as requested.
     """
+    global _dynamics_cache, _dynamics_last_fetch
+    now = datetime.now()
+
+    if (_dynamics_cache and _dynamics_last_fetch and 
+        (now - _dynamics_last_fetch).total_seconds() < DYNAMICS_CACHE_DURATION):
+        print(">>> Returning Cached Market Dynamics (24h policy)")
+        return jsonify(_dynamics_cache)
+
     try:
         def get_tv_payload(sort_field="change", order="desc"):
             return {
@@ -296,14 +308,34 @@ def get_market_dynamics():
         res_cap = requests.post(TV_SCANNER_URL, json=get_tv_payload("market_cap_basic", "desc"), headers=headers)
         index_stocks = format_results(res_cap.json().get('data', []))
 
+        # Hype Logic: Price Change > 5% + Sort by Volume Spike
+        res_hype = requests.post(TV_SCANNER_URL, json={
+            "filter": [
+                {"left": "type", "operation": "in_range", "right": ["stock"]},
+                {"left": "change", "operation": "greater", "right": 5}
+            ],
+            "options": {"lang": "en"}, "markets": ["indonesia"],
+            "symbols": {"query": {"types": []}, "tickers": []},
+            "columns": ["name", "close", "change", "description", "volume"],
+            "sort": {"sortBy": "volume", "sortOrder": "desc"},
+            "range": [0, 20]
+        }, headers=headers)
+        hype_stocks = format_results(res_hype.json().get('data', []))
+
         final_data = {
             'Gainer': gainers[:10],
             'Loser': losers[:10],
-            'MSCI': index_stocks[:10],
-            'FTSE': index_stocks[10:20],
-            'Hype': random.sample(gainers[:20], min(len(gainers), 10)) if gainers else [],
-            'status': 'success'
+            'MSCI': index_stocks[:20], # Top 20 as MSCI Proxy
+            'FTSE': index_stocks[20:40],
+            'Hype': hype_stocks[:15],
+            'status': 'success',
+            'last_update': now.isoformat()
         }
+        
+        # Update Cache
+        _dynamics_cache = final_data
+        _dynamics_last_fetch = now
+        
         return jsonify(final_data)
 
     except Exception as e:
@@ -314,19 +346,22 @@ def get_market_dynamics():
             {'code': 'BBRI', 'name': 'Bank Rakyat Indonesia', 'price': 6125, 'changeNum': 0.8, 'change': '+0.8%'},
             {'code': 'BMRI', 'name': 'Bank Mandiri', 'price': 7200, 'changeNum': -0.5, 'change': '-0.5%'},
             {'code': 'TLKM', 'name': 'Telkom Indonesia', 'price': 3950, 'changeNum': 2.1, 'change': '+2.1%'},
+            {'code': 'PTRO', 'name': 'Petrosea', 'price': 8500, 'changeNum': 7.5, 'change': '+7.5%'},
+            {'code': 'BREN', 'name': 'Barito Renewables', 'price': 6000, 'changeNum': 4.2, 'change': '+4.2%'},
+            {'code': 'CUAN', 'name': 'Petrindo Jaya', 'price': 7200, 'changeNum': 9.1, 'change': '+9.1%'},
             {'code': 'GOTO', 'name': 'GoTo Tech', 'price': 85, 'changeNum': -1.4, 'change': '-1.4%'},
-            {'code': 'ASII', 'name': 'Astra International', 'price': 5250, 'changeNum': 0.0, 'change': '0.0%'},
-            {'code': 'ADRO', 'name': 'Adaro Energy', 'price': 2700, 'changeNum': 3.5, 'change': '+3.5%'},
-            {'code': 'UNVR', 'name': 'Unilever Indonesia', 'price': 2850, 'changeNum': -2.2, 'change': '-2.2%'},
         ]
-        return jsonify({
-            'Gainer': [s for s in seed_pool if s['changeNum'] > 0][:5],
+        
+        fallback_data = {
+            'Gainer': [s for s in seed_pool if s['changeNum'] > 5][:5],
             'Loser': [s for s in seed_pool if s['changeNum'] < 0][:5],
-            'MSCI': seed_pool[:5],
-            'FTSE': seed_pool[3:8],
-            'Hype': seed_pool,
-            'status': 'seeded'
-        })
+            'MSCI': seed_pool[:4],
+            'FTSE': seed_pool[4:6],
+            'Hype': [s for s in seed_pool if s['changeNum'] > 7],
+            'status': 'seeded',
+            'last_update': now.isoformat()
+        }
+        return jsonify(fallback_data)
 
 # AI Analyzers
 sia = SentimentIntensityAnalyzer()
@@ -494,10 +529,25 @@ def get_full_analysis():
 
 @app.route('/api/news', methods=['POST'])
 def get_stock_news():
-    stock_code = request.json.get('code', 'BBCA')
-    news = _scrape_news(stock_code, limit=1)
-    if news:
-        return jsonify(news[0] if isinstance(news, list) else news)
+    """
+    Returns the latest single news item for a specific stock with caching.
+    """
+    stock_code = request.json.get('code', 'BBCA').upper()
+    news_list = _get_news_with_cache(stock_code)
+    
+    if news_list:
+        selected_news = news_list[0]
+        # Map to format expected by single news UI
+        return jsonify({
+            'code': stock_code,
+            'news': selected_news['title'],
+            'impact_detail': "Analisis AI: Berita ini berpotensi mempengaruhi pergerakan harga.",
+            'time': selected_news['time'],
+            'source': selected_news['source'],
+            'image': selected_news['imageUrl'],
+            'url': selected_news['url'],
+            'status': 'success'
+        })
     
     return jsonify({
         'code': stock_code,
@@ -509,59 +559,63 @@ def get_stock_news():
         'status': 'fallback'
     })
 
+def _get_news_with_cache(stock_code, limit=10):
+    """
+    Helper to get news with 6-hour caching and fallback to old news.
+    """
+    global _news_cache, _news_last_fetch
+    now = datetime.now()
+    
+    # Check if we have valid cache
+    is_cache_valid = (stock_code in _news_cache and stock_code in _news_last_fetch and 
+                      (now - _news_last_fetch[stock_code]).total_seconds() < NEWS_CACHE_DURATION)
+    
+    if is_cache_valid:
+        print(f">>> Returning Valid Cached News for {stock_code}")
+        return _news_cache[stock_code]
+
+    # Try to fetch new news
+    print(f">>> Cache expired or missing. Fetching new news for {stock_code}...")
+    new_news = _scrape_news(stock_code, limit=limit)
+    
+    if new_news:
+        _news_cache[stock_code] = new_news
+        _news_last_fetch[stock_code] = now
+        return new_news
+    
+    # If fetch fails, return old cache if exists (even if expired)
+    if stock_code in _news_cache:
+        print(f">>> Fetch failed. Returning STALE cached news for {stock_code}")
+        return _news_cache[stock_code]
+    
+    # If no cache at all, return default fallback news
+    print(f">>> No news found and no cache available for {stock_code}")
+    return _get_fallback_news()
+
+# Optimized Cache for News Data
+_news_cache = {} 
+_news_last_fetch = {}
+NEWS_CACHE_DURATION = 21600 # 6 hours (Updated from 30 mins)
+
 @app.route('/api/news-list', methods=['POST'])
 def get_news_list():
     """
-    Returns a list of news items for Top Stories.
+    Returns a list of news items with server-side caching.
     """
-    stock_code = request.json.get('code', 'IHSG')
-    news_list = _scrape_news(stock_code, limit=8)
+    stock_code = request.json.get('code', 'IHSG').upper()
+    news_list = _get_news_with_cache(stock_code)
     
-    if not news_list:
-        return jsonify({'status': 'error', 'message': 'No news found'}), 404
-        
     return jsonify({
         'status': 'success',
         'news': news_list
     })
 
-
-def _get_article_image(url):
-    """
-    Attempts to fetch the main article image directly from the news page.
-    """
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
-    try:
-        response = requests.get(url, headers=headers, timeout=5)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.content, 'html.parser')
-            # Look for OpenGraph image which is usually the high-quality featured image
-            og_img = soup.find("meta", property="og:image")
-            if og_img and og_img.get('content'):
-                return og_img.get('content')
-            
-            # Fallback to Twitter image
-            tw_img = soup.find("meta", name="twitter:image")
-            if tw_img and tw_img.get('content'):
-                return tw_img.get('content')
-            
-            # Fallback to first large image
-            for img in soup.find_all('img'):
-                src = img.get('src')
-                if src and src.startswith('http') and ('.jpg' in src or '.png' in src or '.jpeg' in src):
-                    # Filtering out very small icons/pixels
-                    width = img.get('width', '0')
-                    if width.isdigit() and int(width) > 200:
-                        return src
-                    return src # Default to first valid looking URL if no dimensions
-    except:
-        pass
-    return None
-
 def _scrape_news(stock_code, limit=5):
     # Use Google News RSS for Indonesia
     rss_url = f"https://news.google.com/rss/search?q={stock_code}+saham+indonesia+terkini&hl=id&gl=ID&ceid=ID:id"
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
     
     try:
         response = requests.get(rss_url, headers=headers, timeout=10)
@@ -571,33 +625,33 @@ def _scrape_news(stock_code, limit=5):
             root = ET.fromstring(response.content)
             items = root.findall('.//item')
         except ET.ParseError:
-            print("XML Parse Error, using fallback news")
-            return _get_fallback_news()
+            print("XML Parse Error")
+            return None
         
+        results = []
         fallback_images = [
-            "https://images.unsplash.com/photo-1611974717482-aa002b6624f1?w=800&auto=format",
-            "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=800&auto=format",
-            "https://images.unsplash.com/photo-1535320485706-44d43b919500?w=800&auto=format",
-            "https://images.unsplash.com/photo-1642543492481-44e81e3914a7?w=800&auto=format",
-            "https://images.unsplash.com/photo-1624996379697-f01d168b1a52?w=800&auto=format",
-            "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format",
-            "https://images.unsplash.com/photo-1526628953301-3e589a6a8b74?w=800&auto=format",
-            "https://images.unsplash.com/photo-1579532515735-28249a4d0c3e?w=800&auto=format"
+            "https://images.unsplash.com/photo-1611974717482-aa002b6624f1?w=800&q=80", # Chart 1
+            "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=800&q=80", # Bull
+            "https://images.unsplash.com/photo-1535320485706-44d43b919500?w=800&q=80", # Trading
+            "https://images.unsplash.com/photo-1642543492481-44e81e3914a7?w=800&q=80", # Coins
+            "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80", # Analysis
+            "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=800&q=80", # Modern Office
+            "https://images.unsplash.com/photo-1526303328214-ddad5fe5bd66?w=800&q=80"  # Currency
         ]
         
         if not items:
-            return _get_fallback_news()
+            return None
 
-        news_results = []
-        # Pre-process items
         for i in range(min(len(items), limit)):
             item = items[i]
+            
+            # Extract Title & Source
             full_title = item.find('title').text
             parts = full_title.rsplit(' - ', 1)
             title = parts[0]
             source = parts[1] if len(parts) > 1 else 'Market News'
-            link = item.find('link').text
             
+            # Time formatting
             raw_date = item.find('pubDate').text
             try: 
                 dt_obj = datetime.strptime(raw_date, "%a, %d %b %Y %H:%M:%S %Z")
@@ -610,46 +664,64 @@ def _scrape_news(stock_code, limit=5):
                 else:
                     time_display = dt_obj.strftime("%d %b")
             except:
-                time_display = "Hari ini"
+                time_display = "Baru ini"
 
-            news_results.append({
+            description = html.unescape(item.find('description').text or "")
+            
+            img_url = None
+            if description and "img" in description:
+                soup = BeautifulSoup(description, 'html.parser')
+                img_tag = soup.find('img')
+                if img_tag:
+                    potential_url = img_tag.get('src')
+                    # Validation: must be absolute, not a tracker, and not too small
+                    if (potential_url and (potential_url.startswith('http')) 
+                        and "pixel" not in potential_url.lower() 
+                        and "googleusercontent" not in potential_url):
+                        img_url = potential_url
+            
+            # Fallback for missing/invalid images
+            if not img_url:
+                # Deterministic shuffle
+                img_url = fallback_images[abs(hash(title + str(i))) % len(fallback_images)]
+
+            results.append({
                 'title': title,
                 'time': time_display,
                 'source': source,
-                'url': link,
-                'index': i
+                'imageUrl': img_url,
+                'url': item.find('link').text
             })
-
-        # Fetch images in parallel for speed
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            future_to_url = {executor.submit(_get_article_image, n['url']): n for n in news_results}
-            for future in concurrent.futures.as_completed(future_to_url):
-                news_item = future_to_url[future]
-                try:
-                    img_url = future.result()
-                    if not img_url or "google.com" in img_url:
-                        # Fallback to Unsplash if scraping failed or returned a bad link
-                        img_url = fallback_images[abs(hash(news_item['title'] + str(news_item['index']))) % len(fallback_images)]
-                    news_item['imageUrl'] = img_url
-                except Exception as e:
-                    news_item['imageUrl'] = fallback_images[abs(hash(news_item['title'])) % len(fallback_images)]
-        
-        # Sort back to original order and remove processing keys
-        final_results = sorted(news_results, key=lambda x: x['index'])
-        for item in final_results:
-            del item['index']
             
-        return final_results if final_results else _get_fallback_news()
+        return results if results else None
 
     except Exception as e:
         print(f"Scrape Helper Error: {e}")
-        return _get_fallback_news()
+        return None
 
 def _get_fallback_news():
     return [
-        {'title': 'IHSG Menguat di Sesi Pembukaan', 'time': '1 jam lalu', 'source': 'CNBC Indonesia', 'imageUrl': 'https://images.unsplash.com/photo-1611974717482-aa002b6624f1?w=600&auto=format', 'url': 'https://www.cnbcindonesia.com/market'},
-        {'title': 'Sektor Perbankan Catat Kinerja Positif', 'time': '3 jam lalu', 'source': 'Kontan', 'imageUrl': 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=600&auto=format', 'url': 'https://www.kontan.co.id/'},
-        {'title': 'Harga Emas Antam Naik Hari Ini', 'time': '5 jam lalu', 'source': 'Bisnis.com', 'imageUrl': 'https://images.unsplash.com/photo-1642543492481-44e81e3914a7?w=600&auto=format', 'url': 'https://www.bisnis.com/'}
+        {
+            'title': 'IHSG Diprediksi Menguat Terbatas Hari Ini', 
+            'time': '1 jam lalu', 
+            'source': 'StockID News', 
+            'imageUrl': 'https://images.unsplash.com/photo-1611974717482-aa002b6624f1?q=75&w=1000', 
+            'url': 'https://www.cnbcindonesia.com/market'
+        },
+        {
+            'title': 'Saham Perbankan Masih Jadi Pilihan Utama Asing', 
+            'time': '3 jam lalu', 
+            'source': 'Market Insight', 
+            'imageUrl': 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?q=75&w=1000', 
+            'url': 'https://www.kontan.co.id/'
+        },
+        {
+            'title': 'Analisis Teknis: Emas Dekati Level Resisten Kuat', 
+            'time': '5 jam lalu', 
+            'source': 'Gold Analyst', 
+            'imageUrl': 'https://images.unsplash.com/photo-1642543492481-44e81e3914a7?q=75&w=1000', 
+            'url': 'https://www.bisnis.com/'
+        }
     ]
 
 # Optimized Cache for Sector Data (Prevents Timeouts)

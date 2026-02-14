@@ -22,6 +22,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
   final ApiService _apiService = ApiService();
   List<dynamic> _topStories = [];
   bool _isTopNewsLoading = true;
+  Map<String, String> _dynamicMarketTags = {}; // Dynamic tags from backend
 
   final List<Map<String, dynamic>> headlineNews = [
     {
@@ -82,18 +83,48 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
     _newsPageController = PageController();
     _startNewsTimer();
     _loadTopStories();
+    _loadDynamicMarketTags();
+  }
+
+  Future<void> _loadDynamicMarketTags() async {
+    try {
+      final categories = await _apiService.fetchMarketCategories();
+      final Map<String, String> newTags = {};
+
+      if (categories.containsKey('MSCI')) {
+        for (var stock in categories['MSCI']!) {
+          newTags[stock['code']] = 'MSCI';
+        }
+      }
+      if (categories.containsKey('Hype')) {
+        for (var stock in categories['Hype']!) {
+          newTags[stock['code']] = 'Hype';
+        }
+      }
+
+      if (mounted && newTags.isNotEmpty) {
+        setState(() {
+          _dynamicMarketTags = newTags;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading dynamic market tags: $e');
+    }
   }
 
   Future<void> _loadTopStories() async {
     try {
       final data = await _apiService.fetchMarketNews();
-      if (mounted && data['news'] != null) {
+      if (mounted) {
         setState(() {
-          _topStories = data['news'];
+          if (data['news'] != null) {
+            _topStories = data['news'];
+          }
           _isTopNewsLoading = false;
         });
       }
     } catch (e) {
+      debugPrint('Error loading top stories: $e');
       if (mounted) setState(() => _isTopNewsLoading = false);
     }
   }
@@ -596,15 +627,33 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
   ];
 
   final List<Map<String, dynamic>> terms = [
-    // --- MARKET PARTICIPANTS ---
+    {
+      'name': 'MSCI Index',
+      'code': 'MSCI',
+      'type': 'Market Indicator',
+      'origin': 'Global Standard',
+      'flag': '🌎',
+      'aum': r'$10T+ Global',
+      'desc':
+          'Indeks acuan global bentukan Morgan Stanley Capital International yang menjadi patokan bagi Fund Manager asing di seluruh dunia.',
+      'features':
+          'Rebalancing dua kali setahun (Mei & November). Saham yang masuk akan dibeli masif oleh dana asing.',
+      'strategy':
+          'Pantau pengumuman rebalancing. Masuk sebelum dana asing melakukan eksekusi beli di penutupan pasar.',
+    },
     {
       'name': 'Big Whale',
       'code': 'WHALE',
       'type': 'Market Player',
       'origin': 'Institutional',
       'flag': '🐋',
+      'aum': 'Rp 100T+',
       'desc':
-          'Entitas pemilik modal raksasa yang mampu menggerakkan harga pasar. Jejak mereka terlihat dari volume spike yang tidak wajar.',
+          'Investor atau institusi dengan modal sangat besar yang mampu menggerakkan arah market secara signifikan.',
+      'features':
+          'Transaksi dalam volume raksasa (Block Trade), mampu menjaga harga di level tertentu (support/resistance).',
+      'strategy':
+          'Jangan melawan arus Whale. Ikuti jejak akumulasinya (Follow the Giant) untuk potensi profit besar.',
     },
     {
       'name': 'Megalodon',
@@ -612,321 +661,341 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
       'type': 'Super Player',
       'origin': 'Top Tier Inst.',
       'flag': '🦈',
+      'aum': 'Rp 500T+',
       'desc':
-          'Level tertinggi Big Money. Gabungan institusi raksasa atau Sovereign Wealth Fund. Saat mereka masuk, tren jangka panjang terbentuk.',
+          'Pemain pasar tingkat tertinggi, biasanya Sovereign Wealth Fund (SWF) atau kolaborasi antar institusi keuangan raksasa.',
+      'features':
+          'Investasi jangka panjang, masuk ke saham Blue Chip, pergerakannya tidak terlihat harian namun sangat masif.',
+      'strategy':
+          'Sangat cocok untuk investasi jangka panjang. Megalodon masuk berarti emiten tersebut memiliki fundametal super solid.',
     },
     {
-      'name': 'Market Maker',
-      'code': 'MM',
-      'type': 'Liquidity',
-      'origin': 'System',
-      'flag': '🏦',
-      'desc':
-          'Penyedia likuiditas yang bertugas menjaga ketersediaan order beli dan jual (Bid-Offer) agar pasar tetap cair dan teratur.',
-    },
-    {
-      'name': 'Smart Money',
-      'code': 'SMF',
-      'type': 'Strategy',
-      'origin': 'Institutional',
-      'flag': '🧠',
-      'desc':
-          'Dana yang dikelola oleh investor profesional/institusi yang memiliki akses informasi dan sumber daya analisis lebih baik dari ritel.',
-    },
-    {
-      'name': 'Retail / Plankton',
-      'code': 'RETL',
-      'type': 'Market Player',
-      'origin': 'Individual',
-      'flag': '🦐',
-      'desc':
-          'Investor perorangan dengan modal kecil. Sering menjadi target likuiditas bagi Big Money saat fase distribusi.',
-    },
-    {
-      'name': 'Scalper',
-      'code': 'SCALP',
-      'type': 'Trader Type',
-      'origin': 'Style',
-      'flag': '⚡',
-      'desc':
-          'Trader yang mencari profit cepat (menit/detik) dengan memanfaatkan volatilitas kecil berkali-kali dalam sehari.',
-    },
-
-    // --- MARKET PHASES & ACTION ---
-    {
-      'name': 'Accumulation',
-      'code': 'ACC',
-      'type': 'Market Phase',
-      'origin': 'Price Action',
-      'flag': '📦',
-      'desc':
-          'Fase di mana Big Money diam-diam mengumpulkan barang di harga bawah sebelum harga dinaikkan (Mark-up).',
-    },
-    {
-      'name': 'Mark-Up',
-      'code': 'UP',
-      'type': 'Market Phase',
-      'origin': 'Price Action',
+      'name': 'ARA (Auto Reject Atas)',
+      'code': 'ARA',
+      'type': 'Price Phenomenon',
+      'origin': 'IDX Regulation',
       'flag': '🚀',
       'desc':
-          'Fase kenaikan harga yang didorong oleh Big Money setelah akumulasi selesai. Retail biasanya mulai masuk di fase ini.',
+          'Batas kenaikan maksimal harga saham dalam satu hari perdagangan yang ditetapkan oleh bursa.',
+      'features':
+          'Harga tidak bisa naik lagi, antrean beli (bid) menumpuk sangat tebal di harga tertinggi tersebut.',
+      'strategy':
+          'Indikasi sentimen sangat positif. Biasanya akan berlanjut naik di hari berikutnya (Pre-opening surge).',
     },
     {
-      'name': 'Distribution',
-      'code': 'DIST',
-      'type': 'Market Phase',
-      'origin': 'Price Action',
-      'flag': '🎁',
+      'name': 'ARB (Auto Reject Bawah)',
+      'code': 'ARB',
+      'type': 'Price Phenomenon',
+      'origin': 'IDX Regulation',
+      'flag': '📉',
       'desc':
-          'Fase Big Money menjual barang kepada retail di harga atas. Biasanya ditandai dengan berita bagus yang memancing FOMO.',
+          'Batas penurunan maksimal harga saham dalam satu hari perdagangan yang ditetapkan oleh bursa.',
+      'features':
+          'Harga tidak bisa turun lagi, antrean jual (offer) menumpuk sangat tebal di harga terendah tersebut.',
+      'strategy':
+          'Jangan terburu-buru melakukan "Bottom Fishing". Tunggu antrean jual mencair sebelum masuk.',
     },
     {
-      'name': 'Mark-Down',
-      'code': 'DOWN',
-      'type': 'Market Phase',
-      'origin': 'Price Action',
-      'flag': '🩸',
+      'name': 'Haka (Hajar Kanan)',
+      'code': 'HAKA',
+      'type': 'Trading Action',
+      'origin': 'Market Order',
+      'flag': '🔥',
       'desc':
-          'Fase penurunan harga secara tajam setelah distribusi selesai. Retail yang "nyangkut" biasanya panic sell di sini.',
+          'Strategi membeli saham dengan langsung memasang harga di kolom Offer (harga jual terbaik saat itu).',
+      'features':
+          'Langsung mendapatkan barang (Done), biasanya dilakukan saat takut ketinggalan momentum (Urgency).',
+      'strategy':
+          'Lakukan Haka hanya jika volume bid di bawahnya sangat kuat dan harga baru saja breakout.',
     },
     {
-      'name': 'Breakout',
-      'code': 'BO',
-      'type': 'Price Action',
-      'origin': 'Technical',
-      'flag': '💥',
+      'name': 'Haki (Hajar Kiri)',
+      'code': 'HAKI',
+      'type': 'Trading Action',
+      'origin': 'Market Order',
+      'flag': '❄️',
       'desc':
-          'Harga berhasil menembus level resisten kuat dengan volume tinggi, menandakan potensi kelanjutan tren naik.',
+          'Strategi menjual saham dengan langsung memasang harga di kolom Bid (harga beli terbaik saat itu).',
+      'features':
+          'Langsung menjual barang, dilakukan saat ingin segera keluar dari posisi (Panic Selling/Profit Taking).',
+      'strategy':
+          'Haki massal adalah tanda awal distribusi. Segera amankan profit jika melihat Haki dalam volume besar.',
     },
     {
-      'name': 'Rejection',
-      'code': 'REJ',
-      'type': 'Price Action',
-      'origin': 'Technical',
-      'flag': '✋',
+      'name': 'Pump & Dump',
+      'code': 'PUMP',
+      'type': 'Market Game',
+      'origin': 'Manipulation',
+      'flag': '💉',
       'desc':
-          'Gagal menembus support atau resisten, biasanya meninggalkan "ekor" panjang pada candle (Shadow/Wick).',
+          'Permainan bandar untuk menaikkan harga secara tidak wajar (Pump) lalu menjualnya serentak (Dump) ke retail.',
+      'features':
+          'Kenaikan harga tajam tanpa ada berita fundamental, volume melonjak tiba-tiba, lalu harga jatuh sangat cepat.',
+      'strategy':
+          'Sangat berisiko tinggi. Jika sudah profit, segera keluar. Jangan pernah menahan saham tipe ini terlalu lama.',
     },
-
-    // --- QUANTITATIVE & INDICATORS ---
     {
-      'name': 'MSCI Index',
-      'code': 'MSCI',
-      'type': 'Indicator',
-      'origin': 'Global',
-      'flag': '🌎',
+      'name': 'Spoofing',
+      'code': 'SPOOF',
+      'type': 'Market Game',
+      'origin': 'Mind Game',
+      'flag': '�',
       'desc':
-          'Morgan Stanley Capital International. Masuk indeks ini berarti saham akan dibeli otomatis oleh ribuan reksa dana global.',
+          'Memasang antrean beli/jual raksasa hanya untuk memancing minat retail, namun antrean tersebut dicabut (cancel) sebelum kejadian.',
+      'features':
+          'Bid terlihat sangat tebal tapi tiba-tiba hilang saat harga mendekati level tersebut (Fake Bid/Offer).',
+      'strategy':
+          'Waspada bid tebal yang tidak proporsional. Seringkali itu jebakan agar retail mau Haka di harga atas.',
     },
-    {
-      'name': 'VWAP',
-      'code': 'VWAP',
-      'type': 'Indicator',
-      'origin': 'Quant',
-      'flag': '📊',
-      'desc':
-          'Volume Weighted Average Price. Harga rata-rata sesungguhnya berdasarkan volume. Acuan utama institusi untuk entry/exit.',
-    },
-    {
-      'name': 'Order Book',
-      'code': 'OB',
-      'type': 'Data',
-      'origin': 'Exchange',
-      'flag': '📖',
-      'desc':
-          'Daftar antrian beli (Bid) dan jual (Offer). Analisis Tape Reading melihat perilaku antrian ini untuk mendeteksi Bandar.',
-    },
-    {
-      'name': 'Ara & Arb',
-      'code': 'LIMIT',
-      'type': 'Regulation',
-      'origin': 'IDX',
-      'flag': '🛑',
-      'desc':
-          'Auto Rejection Atas/Bawah. Batas kenaikan atau penurunan harga maksimal dalam sehari yang diizinkan bursa.',
-    },
-    {
-      'name': 'Gap',
-      'code': 'GAP',
-      'type': 'Price Action',
-      'origin': 'Technical',
-      'flag': '🕳️',
-      'desc':
-          'Celah harga kosong antara penutupan kemarin dan pembukaan hari ini. "Gap must be filled" adalah mitos yang sering dipercaya.',
-    },
-
-    // --- TRADER SLANG (INDO) ---
-    {
-      'name': 'HAKA',
-      'code': 'BUY',
-      'type': 'Slang',
-      'origin': 'Trader Indo',
-      'flag': '🥊',
-      'desc':
-          'Hajar Kanan. Membeli saham langsung di harga Offer (Ask) tanpa antri, karena yakin harga akan naik cepat.',
-    },
-    {
-      'name': 'HAKI',
-      'code': 'SELL',
-      'type': 'Slang',
-      'origin': 'Trader Indo',
-      'flag': '🏃',
-      'desc':
-          'Hajar Kiri. Menjual saham langsung di harga Bid (langsung laku) karena panik atau ingin segera keluar.',
-    },
-    {
-      'name': 'Sangkuter',
-      'code': 'BAG',
-      'type': 'Status',
-      'origin': 'Trader Indo',
-      'flag': '🗿',
-      'desc':
-          'Istilah untuk trader yang membeli di pucuk dan harga turun drastis, kini memegang saham rugi (Bag Holder).',
-    },
-    {
-      'name': 'Serok',
-      'code': 'DIP',
-      'type': 'Action',
-      'origin': 'Trader Indo',
-      'flag': '🥄',
-      'desc':
-          'Membeli saham saat harga sedang turun (Buy on Weakness), berharap harga akan memantul naik (Rebound).',
-    },
-    {
-      'name': 'Pom-Pom',
-      'code': 'HYPE',
-      'type': 'Manipulation',
-      'origin': 'Influencer',
-      'flag': '📢',
-      'desc':
-          'Aktivitas menghasut orang lain untuk membeli saham tertentu agar harga naik, biasanya dilakukan oleh influencer saham.',
-    },
-    {
-      'name': 'Cuan',
-      'code': 'PROFIT',
-      'type': 'Goal',
-      'origin': 'Hokkian',
-      'flag': '💰',
-      'desc': 'Profit atau keuntungan. Kata suci bagi setiap trader saham.',
-    },
-    {
-      'name': 'Boncos',
-      'code': 'LOSS',
-      'type': 'Result',
-      'origin': 'Slang',
-      'flag': '💸',
-      'desc':
-          'Rugi bandar. Kondisi ketika selling price lebih rendah dari average buying price.',
-    },
-
-    // --- SPECIAL EVENTS ---
     {
       'name': 'Wash Trade',
       'code': 'WASH',
-      'type': 'Manipulation',
-      'origin': 'Illegal',
+      'type': 'Market Game',
+      'origin': 'Volume Play',
       'flag': '🧼',
       'desc':
-          'Transaksi semu di mana pembeli dan penjual adalah pihak yang sama untuk memanipulasi volume dan memancing retail.',
+          'Satu pihak (bandar) melakukan jual dan beli ke dirinya sendiri menggunakan beberapa akun berbeda.',
+      'features':
+          'Volume harian terlihat sangat ramai tapi harga hampir tidak bergerak (sideways).',
+      'strategy':
+          'Indikasi saham sedang berusaha masuk ke radar "Running Trade" atau ingin masuk filter teknikal tertentu.',
     },
     {
-      'name': 'Short Squeeze',
-      'code': 'SQZ',
-      'type': 'Event',
-      'origin': 'Market',
-      'flag': '🍋',
+      'name': 'Cornering',
+      'code': 'CORN',
+      'type': 'Market Game',
+      'origin': 'Monopoly',
+      'flag': '📐',
       'desc':
-          'Kenaikan harga tajam karena para Short Seller terpaksa melakukan Buyback untuk menutup kerugian mereka.',
-    },
-    {
-      'name': 'Dead Cat Bounce',
-      'code': 'DCB',
-      'type': 'Trap',
-      'origin': 'Market',
-      'flag': '🐈',
-      'desc':
-          'Kenaikan harga sementara dalam tren turun yang kuat. "Bahkan kucing mati pun akan memantul jika dijatuhkan dari cukup tinggi".',
-    },
-    {
-      'name': 'IPO',
-      'code': 'IPO',
-      'type': 'Event',
-      'origin': 'Corporate',
-      'flag': '👶',
-      'desc':
-          'Initial Public Offering. Penawaran saham perdana ke publik. Sering menjadi ajang "gorengan" di hari pertama listing.',
-    },
-    {
-      'name': 'Rights Issue',
-      'code': 'RI',
-      'type': 'Event',
-      'origin': 'Corporate',
-      'flag': '🎫',
-      'desc':
-          'Penerbitan saham baru (HMETD). Harga saham lama biasanya akan terdilusi (turun) menyesuaikan harga teoritis baru.',
-    },
-    {
-      'name': 'Stock Split',
-      'code': 'SS',
-      'type': 'Event',
-      'origin': 'Corporate',
-      'flag': '✂️',
-      'desc':
-          'Pemecahan nominal saham agar lebih murah dan likuid. Contoh: Harga 10.000 menjadi 2.000 (Split 1:5).',
+          'Aksi menguasai sebagian besar saham publik sehingga bandar bisa mengontrol harga secara mutlak.',
+      'features':
+          'Saham tidak likuid, bid/offer sangat tipis, harga bisa ditarik naik atau turun sesuka hati bandar.',
+      'strategy':
+          'Hindari saham tipe ini karena likuiditas sangat rendah. Sulit untuk menjual kembali jika sudah masuk.',
     },
     {
       'name': 'Dividen Trap',
       'code': 'TRAP',
-      'type': 'Trap',
-      'origin': 'Market',
-      'flag': '🪤',
+      'type': 'Market Trap',
+      'origin': 'Dividend Play',
+      'flag': '�',
       'desc':
-          'Penurunan harga saham secara drastis saat Ex-Date dividen, seringkali lebih besar dari nilai dividen yang didapat.',
+          'Kondisi di mana harga saham jatuh lebih dalam dari jumlah dividen yang dibagikan tepat setelah Cum Date.',
+      'features':
+          'Kenaikan harga menjelang Cum Date, disusul penurunan tajam saat Ex Date.',
+      'strategy':
+          'Jika tujuan hanya trading, jual sebelum Cum Date. Jika investasi, perhatikan fundamental masa depan emiten.',
     },
     {
-      'name': 'UMA',
-      'code': 'UMA',
-      'type': 'Status',
-      'origin': 'IDX',
-      'flag': '⚠️',
+      'name': 'Window Dressing',
+      'code': 'WD',
+      'type': 'Seasonal Event',
+      'origin': 'Year-End',
+      'flag': '🖼️',
       'desc':
-          'Unusual Market Activity. Peringatan dari bursa karena pergerakan harga/volume saham dinilai tidak wajar.',
+          'Upaya manajer investasi untuk memoles portofolio agar terlihat bagus di akhir tahun dengan menaikkan harga saham tertentu.',
+      'features':
+          'Biasanya terjadi di bulan Desember, fokus pada saham-saham Blue Chip dan emiten besar.',
+      'strategy':
+          'Akumulasi saham Blue Chip yang kinerjanya bagus namun harganya masih tertinggal di bulan November.',
     },
     {
-      'name': 'Suspend',
-      'code': 'SUSP',
-      'type': 'Status',
-      'origin': 'IDX',
-      'flag': '🔒',
+      'name': 'Insider Trading',
+      'code': 'INSIDE',
+      'type': 'Illegal Act',
+      'origin': 'Privileged Info',
+      'flag': '�',
       'desc':
-          'Penghentian sementara perdagangan saham oleh bursa. Bisa karena UMA berkepanjangan atau masalah korporasi.',
-    },
-    {
-      'name': 'FCA',
-      'code': 'WATCH',
-      'type': 'Status',
-      'origin': 'IDX',
-      'flag': '👁️',
-      'desc':
-          'Full Call Auction. Metode perdagangan khusus untuk saham dalam pemantauan khusus, order tidak langsung match (Blind Order).',
+          'Transaksi saham berdasarkan informasi penting perusahaan yang belum dipublikasikan ke publik.',
+      'features':
+          'Volume beli/jual melonjak sangat tinggi beberapa hari sebelum ada pengumuman resmi korporasi.',
+      'strategy':
+          'Pantau anomali volume. Jika volume naik tanpa berita, kemungkinan ada berita besar yang akan segera rilis.',
     },
     {
       'name': 'FOMO',
       'code': 'FOMO',
-      'origin': 'Psychology',
-      'type': 'Emotion',
+      'type': 'Psychology',
+      'origin': 'Retail Behavior',
       'flag': '😱',
       'desc':
-          'Fear Of Missing Out. Rasa takut ketinggalan profit yang membuat trader membeli di harga pucuk tanpa analisa.',
+          'Fear of Missing Out. Rasa takut ketinggalan kereta saat harga saham sedang naik tinggi (To the Moon).',
+      'features':
+          'Membeli saham di harga "pucuk" tanpa analisis, hanya ikut-ikutan kerumunan di media sosial.',
+      'strategy':
+          'Selalu miliki Trading Plan. Jika harga sudah naik terlalu jauh dari support, lebih baik menunggu koreksi.',
     },
     {
-      'name': 'FUD',
-      'code': 'FUD',
-      'origin': 'Psychology',
-      'type': 'Emotion',
-      'flag': '😨',
+      'name': 'Smart Money',
+      'code': 'SMF',
+      'type': 'Market Strategy',
+      'origin': 'Institutional',
+      'flag': '🧠',
       'desc':
-          'Fear, Uncertainty, Doubt. Penyebaran berita negatif untuk menakut-nakuti investor agar menjual saham mereka (Cut Loss).',
+          'Aliran dana cerdas dari institusi yang melakukan akumulasi secara rahasia sebelum harga meledak.',
+      'features':
+          'Akumulasi bertahap, volume stabil namun konsisten net buy, harga dipertahankan di area sideways.',
+      'strategy':
+          'Identifikasi area akumulasi. Masuk bersamaan dengan Smart Money dan bersabarlah (Patient Investing).',
+    },
+    {
+      'name': 'Short Squeeze',
+      'code': 'SQUZ',
+      'type': 'Price Action',
+      'origin': 'Market Dynamics',
+      'flag': '🗜️',
+      'desc':
+          'Kenaikan harga tajam yang memaksa para short-seller untuk membeli kembali saham mereka (cut loss), yang justru semakin mendorong harga naik tinggi.',
+      'features':
+          'Kenaikan harga ekstrim dalam waktu singkat, volume beli melonjak karena forced-buy.',
+      'strategy':
+          'Sangat berisiko tinggi. Jangan mencoba melawan tren naik yang didorong oleh Short Squeeze.',
+    },
+    {
+      'name': 'Dark Pools',
+      'code': 'DARK',
+      'type': 'Market Venue',
+      'origin': 'Off-Exchange',
+      'flag': '🌑',
+      'desc':
+          'Bursa swasta yang digunakan oleh investor institusi besar untuk memperdagangkan blok saham dalam jumlah raksasa tanpa diketahui publik secara real-time.',
+      'features':
+          'Membantu institusi masuk ke posisi besar tanpa menyebabkan fluktuasi harga yang drastis di bursa reguler.',
+      'strategy':
+          'Pantau anomali data di akhir hari (Large Prints). Jika ada volume besar di harga tertentu off-market, itu area support kuat.',
+    },
+    {
+      'name': 'High-Frequency Trading',
+      'code': 'HFT',
+      'type': 'Quant Strategy',
+      'origin': 'Algorithmic',
+      'flag': '⚡',
+      'desc':
+          'Metode perdagangan menggunakan algoritma super cepat untuk mengeksekusi ribuan order dalam hitungan milidetik.',
+      'features':
+          'Mencari profit dari selisih harga yang sangat kecil (micro-arbitrage), mendominasi volume bursa global.',
+      'strategy':
+          'Retail tidak bisa menang melawan kecepatan HFT. Gunakan timeframe yang lebih panjang untuk menghindari "noise" dari algoritma.',
+    },
+    {
+      'name': 'VIX (Fear Index)',
+      'code': 'VIX',
+      'type': 'Volatility',
+      'origin': 'CBOE / Global',
+      'flag': '🌡️',
+      'desc':
+          'Indeks yang mengukur ekspektasi volatilitas pasar. Sering disebut sebagai Indeks Ketakutan.',
+      'features':
+          'VIX naik saat pasar panik/jatuh. VIX rendah biasanya terjadi saat pasar stabil atau terlalu optimis.',
+      'strategy':
+          'Beli saat VIX tinggi (saat semua orang takut), jual saat VIX rendah (saat semua orang rakus).',
+    },
+    {
+      'name': 'Golden Cross',
+      'code': 'GOLD',
+      'type': 'Technical',
+      'origin': 'Indicators',
+      'flag': '✨',
+      'desc':
+          'Terjadi ketika moving average jangka pendek (misal: MA50) memotong ke atas moving average jangka panjang (misal: MA200).',
+      'features':
+          'Sinyal bahwa tren telah berubah dari bearish menjadi bullish secara jangka panjang.',
+      'strategy':
+          'Konfirmasi yang kuat untuk melakukan Buy & Hold. Tingkat keberhasilan lebih tinggi jika didukung volume.',
+    },
+    {
+      'name': 'Death Cross',
+      'code': 'DEATH',
+      'type': 'Technical',
+      'origin': 'Indicators',
+      'flag': '☠️',
+      'desc': 'Kebalikan dari Golden Cross; MA50 memotong ke bawah MA200.',
+      'features':
+          'Sinyal bahaya bahwa tren besar telah berubah menjadi bearish. Penurunan lebih lanjut sangat mungkin terjadi.',
+      'strategy':
+          'Gunakan sinyal ini untuk keluar dari posisi atau melakukan lindung nilai (hedging).',
+    },
+    {
+      'name': 'Gamma Squeeze',
+      'code': 'GAMMA',
+      'type': 'Market Dynamics',
+      'origin': 'Options Market',
+      'flag': '🌀',
+      'desc':
+          'Ketika market maker dipaksa membeli saham dasar untuk melindungi nilai (hedging) posisi opsi jual-beli mereka, memicu kenaikan harga berantai.',
+      'features':
+          'Sering terjadi pada saham dengan minat opsi call yang sangat tinggi (seperti kasus GameStop).',
+      'strategy':
+          'Pantau rasio Put/Call. Gamma squeeze adalah bahan bakar bagi reli harga yang tidak masuk akal secara fundamental.',
+    },
+    {
+      'name': 'Dead Cat Bounce',
+      'code': 'DCB',
+      'type': 'Price Action',
+      'origin': 'Sentiment',
+      'flag': '🐈',
+      'desc':
+          'Pemulihan harga sementara yang terjadi di tengah tren turun yang parah sebelum harga kembali jatuh lebih dalam.',
+      'features':
+          'Kenaikan harga tanpa didukung volume yang meyakinkan, sering menipu trader untuk masuk terlalu dini.',
+      'strategy':
+          'Waspada jebakan beli. Jangan anggap setiap kenaikan kecil adalah pembalikan arah (reversal).',
+    },
+    {
+      'name': 'FTSE Index',
+      'code': 'FTSE',
+      'type': 'Market Indicator',
+      'origin': 'London Stock Exchange',
+      'flag': '🇬🇧',
+      'aum': r'$4T+ Base',
+      'desc':
+          'Financial Times Stock Exchange Index. Pesaing utama MSCI dalam menentukan saham-saham pilihan yang layak investasi secara global.',
+      'features':
+          'Memiliki pengaruh besar pada arus modal asing (inflow/outflow) ke saham-saham Big Cap di Indonesia.',
+      'strategy':
+          'Seringkali rebalancing FTSE memiliki efek harga yang kontradiktif dengan MSCI. Gunakan sebagai konfirmasi tambahan.',
+    },
+    {
+      'name': 'Blackrock',
+      'code': 'BLK',
+      'type': 'Institutional Giant',
+      'origin': 'USA / Global',
+      'flag': '🇺🇸',
+      'aum': r'$10T+',
+      'desc':
+          'Manajer investasi terbesar di dunia. Pergerakan Blackrock bisa menentukan hidup-mati sebuah tren pasar global.',
+      'features':
+          'Menggunakan sistem AI raksasa bernama "Aladdin" untuk manajemen risiko dan eksekusi perdagangan.',
+      'strategy':
+          'Saham yang dimiliki Blackrock dalam jumlah besar cenderung stabil dan memiliki dukungan likuiditas yang sangat kuat.',
+    },
+    {
+      'name': 'Vanguard',
+      'code': 'VANG',
+      'type': 'Institutional Giant',
+      'origin': 'USA / Global',
+      'flag': '🇺🇸',
+      'aum': r'$8T+',
+      'desc':
+          'Raksasa investasi yang mempopulerkan dana indeks (Passive Investing). Pemilik hampir setiap saham besar di dunia.',
+      'features':
+          'Dikenal dengan strategi "Buy and Hold" jangka sangat panjang. Hampir tidak pernah melakukan spekulasi harian.',
+      'strategy':
+          'Jika Vanguard terus menambah porsi di sebuah saham, itu adalah sinyal "Long Term Validation" yang sangat kredibel.',
+    },
+    {
+      'name': 'SWF (Sovereign Wealth Fund)',
+      'code': 'SWF',
+      'type': 'State Investment',
+      'origin': 'Government',
+      'flag': '🏛️',
+      'aum': r'$15T+ Combined',
+      'desc':
+          'Dana investasi milik negara (seperti INA di Indonesia, GIC di Singapura, atau NBIM di Norwegia).',
+      'features':
+          'Investasi strategis, biasanya masuk ke proyek infrastruktur atau saham-saham penggerak ekonomi negara.',
+      'strategy':
+          'Masuknya SWF ke sebuah emiten seringkali merupakan sinyal "Restu Pemerintah" atau dukungan politik-ekonomi yang kuat.',
     },
   ];
 
@@ -934,6 +1003,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
     {
       'name': 'Salim Group',
       'owner': 'Anthoni Salim',
+      'assets': 'Rp 650T+',
       'stocks': [
         {'t': 'INDF', 's': 'Normal'},
         {'t': 'ICBP', 's': 'Normal'},
@@ -948,6 +1018,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
     {
       'name': 'Hartono Group (Djarum)',
       'owner': 'Budi & Michael Hartono',
+      'assets': 'Rp 1,480T+',
       'stocks': [
         {'t': 'BBCA', 's': 'MSCI'},
         {'t': 'TOWR', 's': 'Normal'},
@@ -958,6 +1029,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
     {
       'name': 'Sinar Mas Group',
       'owner': 'Keluarga Widjaja',
+      'assets': 'Rp 960T+',
       'stocks': [
         {'t': 'BSDE', 's': 'Normal'},
         {'t': 'INKP', 's': 'Normal'},
@@ -972,16 +1044,19 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
     {
       'name': 'Barito Group',
       'owner': 'Prajogo Pangestu',
+      'assets': 'Rp 780T+',
       'stocks': [
         {'t': 'BRPT', 's': 'Normal'},
         {'t': 'TPIA', 's': 'Normal'},
         {'t': 'BREN', 's': 'Hype'},
         {'t': 'CUAN', 's': 'Hype'},
+        {'t': 'PTRO', 's': 'Hype'}, // Added PTRO (Prajogo's Group now)
       ],
     },
     {
       'name': 'Saratoga Group',
       'owner': 'Sandiaga Uno / Edwin S.',
+      'assets': 'Rp 185T+',
       'stocks': [
         {'t': 'SRTG', 's': 'Normal'},
         {'t': 'ADRO', 's': 'MSCI'},
@@ -994,6 +1069,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
     {
       'name': 'DCI Group (Data Center)',
       'owner': 'Toto Sugiri',
+      'assets': 'Rp 42T+',
       'stocks': [
         {'t': 'DCII', 's': 'Hype'},
         {'t': 'EDGE', 's': 'Normal'},
@@ -1002,6 +1078,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
     {
       'name': 'Harita Group',
       'owner': 'Lim Hariyanto Wijaya Sarwono',
+      'assets': 'Rp 95T+',
       'stocks': [
         {'t': 'NCKL', 's': 'Hype'},
         {'t': 'CITA', 's': 'Normal'},
@@ -1011,6 +1088,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
     {
       'name': 'Astra Group',
       'owner': 'Jardine Cycle & Carriage',
+      'assets': 'Rp 450T+',
       'stocks': [
         {'t': 'ASII', 's': 'MSCI'},
         {'t': 'UNTR', 's': 'Normal'},
@@ -1022,6 +1100,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
     {
       'name': 'Triputra Group',
       'owner': 'T.P. Rachmat (Teddy)',
+      'assets': 'Rp 125T+',
       'stocks': [
         {'t': 'TAPG', 's': 'Normal'},
         {'t': 'ASSA', 's': 'Normal'},
@@ -1032,9 +1111,135 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
     {
       'name': 'Djarum Tech',
       'owner': 'Martin Hartono',
+      'assets': 'Rp 88T+',
       'stocks': [
         {'t': 'BELI', 's': 'Normal'},
         {'t': 'GOTO', 's': 'Hype'},
+      ],
+    },
+    {
+      'name': 'PIK 2 Group (Agung Sedayu)',
+      'owner': 'Sugianto Kusuma (Aguan)',
+      'assets': 'Rp 115T+',
+      'stocks': [
+        {'t': 'PANI', 's': 'Hype'},
+      ],
+    },
+    {
+      'name': 'Ciputra Group',
+      'owner': 'Keluarga Ciputra',
+      'assets': 'Rp 48T+',
+      'stocks': [
+        {'t': 'CTRA', 's': 'MSCI'},
+      ],
+    },
+    {
+      'name': 'Lippo Group',
+      'owner': 'James Riady',
+      'assets': 'Rp 215T+',
+      'stocks': [
+        {'t': 'LPKR', 's': 'Normal'},
+        {'t': 'LPPF', 's': 'Normal'},
+        {'t': 'MLPL', 's': 'Normal'},
+        {'t': 'MPPA', 's': 'Normal'},
+      ],
+    },
+    {
+      'name': 'CT Corp',
+      'owner': 'Chairul Tanjung',
+      'assets': 'Rp 235T+',
+      'stocks': [
+        {'t': 'MEGA', 's': 'Normal'},
+        {'t': 'ALLO', 's': 'Hype'},
+      ],
+    },
+    {
+      'name': 'MNC Group',
+      'owner': 'Hary Tanoesoedibjo',
+      'assets': 'Rp 98T+',
+      'stocks': [
+        {'t': 'MNCN', 's': 'Normal'},
+        {'t': 'BMTR', 's': 'Normal'},
+        {'t': 'MSIN', 's': 'Normal'},
+        {'t': 'BHIT', 's': 'Normal'},
+        {'t': 'BABP', 's': 'Normal'},
+      ],
+    },
+    {
+      'name': 'Bakrie Group',
+      'owner': 'Keluarga Bakrie',
+      'assets': 'Rp 165T+',
+      'stocks': [
+        {'t': 'BUMI', 's': 'Hype'},
+        {'t': 'BRMS', 's': 'Hype'},
+        {'t': 'ENRG', 's': 'Normal'},
+        {'t': 'DEWA', 's': 'Normal'},
+      ],
+    },
+    {
+      'name': 'Mayapada Group',
+      'owner': 'Dato Sri Tahir',
+      'assets': 'Rp 180T+',
+      'stocks': [
+        {'t': 'MAYA', 's': 'Normal'},
+        {'t': 'SRAJ', 's': 'Normal'},
+      ],
+    },
+    {
+      'name': 'Pakuwon Group',
+      'owner': 'Alexander Tedja',
+      'assets': 'Rp 38T+',
+      'stocks': [
+        {'t': 'PWON', 's': 'Normal'},
+      ],
+    },
+    {
+      'name': 'Tobacco Giants',
+      'owner': 'Various',
+      'assets': 'Rp 155T+',
+      'stocks': [
+        {'t': 'GGRM', 's': 'Normal'},
+        {'t': 'HMSP', 's': 'Normal'},
+      ],
+    },
+    {
+      'name': 'Panin Group',
+      'owner': 'Mu\'min Ali Gunawan',
+      'assets': 'Rp 225T+',
+      'stocks': [
+        {'t': 'PNBN', 's': 'Normal'},
+        {'t': 'PNIN', 's': 'Normal'},
+        {'t': 'PNLF', 's': 'Normal'},
+        {'t': 'PANS', 's': 'Normal'},
+      ],
+    },
+    {
+      'name': 'Emtek Group',
+      'owner': 'Eddy K. Sariaatmadja',
+      'assets': 'Rp 110T+',
+      'stocks': [
+        {'t': 'EMTK', 's': 'Normal'},
+        {'t': 'SCMA', 's': 'Normal'},
+        {'t': 'BUKA', 's': 'Normal'},
+      ],
+    },
+    {
+      'name': 'Tancorp Group',
+      'owner': 'Hermanto Tanoko',
+      'assets': 'Rp 60T+',
+      'stocks': [
+        {'t': 'AVIA', 's': 'Normal'},
+        {'t': 'CLEO', 's': 'Normal'},
+        {'t': 'DEPO', 's': 'Normal'},
+      ],
+    },
+    {
+      'name': 'Rajawali Group',
+      'owner': 'Peter Sondakh',
+      'assets': 'Rp 45T+',
+      'stocks': [
+        {'t': 'BWPT', 's': 'Normal'},
+        {'t': 'ARCI', 's': 'Normal'},
       ],
     },
   ];
@@ -1143,7 +1348,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
         extendBodyBehindAppBar: true,
         appBar: AppBar(
           title: Text(
-            'Kamus Brocksum',
+            'Knowledge',
             style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
           ),
           bottom: TabBar(
@@ -1394,59 +1599,68 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
 
   Widget _buildTermsList() {
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(10),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.1,
+        crossAxisCount: 4,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 0.72,
       ),
       itemCount: terms.length,
       itemBuilder: (context, index) {
         final term = terms[index];
         return InkWell(
-          onTap: () => _showTermDefinition(term),
-          borderRadius: BorderRadius.circular(20),
+          onTap: () => _showAnalyticalDetail(term),
+          borderRadius: BorderRadius.circular(12),
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              color: Colors.white.withValues(alpha: 0.03),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFC800FF).withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
+                    color: const Color(0xFFC800FF).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     term['code'] ?? term['flag'] ?? (term['name']?[0] ?? 'T'),
                     style: GoogleFonts.outfit(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
                       color: const Color(0xFFC800FF),
+                      letterSpacing: -0.5,
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 Text(
                   term['name'] ?? term['term'] ?? '',
                   textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.outfit(
-                    fontSize: 14,
+                    fontSize: 8.5,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Colors.white.withValues(alpha: 0.9),
+                    height: 1.0,
                   ),
                 ),
+                const SizedBox(height: 3),
                 Text(
-                  term['type'] ?? 'Trading Term',
+                  (term['type'] ?? 'Trading').toUpperCase(),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
                   style: GoogleFonts.outfit(
-                    fontSize: 10,
-                    color: Colors.white38,
+                    fontSize: 6.5,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.5,
+                    color: Colors.white24,
                   ),
                 ),
               ],
@@ -1504,6 +1718,27 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Text(
+                          'TOTAL ASSETS: ',
+                          style: TextStyle(
+                            color: Colors.white38,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          conglo['assets'] ?? 'N/A',
+                          style: GoogleFonts.outfit(
+                            color: Colors.cyanAccent,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 8,
@@ -1511,7 +1746,12 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
                       children: (conglo['stocks'] as List<Map<String, String>>)
                           .map((stock) {
                             final ticker = stock['t']!;
-                            final status = stock['s']!.toLowerCase();
+                            // Dynamic override from backend tags
+                            final status =
+                                (_dynamicMarketTags.containsKey(ticker)
+                                        ? _dynamicMarketTags[ticker]
+                                        : stock['s'])!
+                                    .toLowerCase();
                             Color color = const Color(0xFFC800FF);
                             if (status == 'hype') color = Colors.cyanAccent;
                             if (status == 'msci')
@@ -1617,146 +1857,6 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
     );
   }
 
-  void _showTermDefinition(Map<String, dynamic> item) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.5,
-        decoration: const BoxDecoration(
-          color: Color(0xFF13081E),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-          boxShadow: [
-            BoxShadow(
-              color: Color(0xFFC800FF),
-              blurRadius: 20,
-              spreadRadius: -10,
-            ),
-          ],
-        ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFC800FF).withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      item['code'] ?? item['flag'] ?? 'T',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.outfit(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFFC800FF),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item['name']!,
-                          style: GoogleFonts.outfit(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white10,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                (item['type'] ?? 'Knowledge').toUpperCase(),
-                                style: const TextStyle(
-                                  color: Colors.cyanAccent,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ),
-                            if (item['origin'] != null) ...[
-                              const SizedBox(width: 8),
-                              Text(
-                                item['origin'],
-                                style: const TextStyle(
-                                  color: Colors.white38,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-              Text(
-                'DEFINITION / PENGERTIAN',
-                style: GoogleFonts.outfit(
-                  color: const Color(0xFFC800FF),
-                  letterSpacing: 2,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.1),
-                  ),
-                ),
-                child: Text(
-                  item['desc'] ?? item['definition'] ?? 'No Description',
-                  style: GoogleFonts.outfit(
-                    color: Colors.white,
-                    height: 1.6,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   void _showAnalyticalDetail(Map<String, dynamic> item) {
     showModalBottomSheet(
       context: context,
@@ -1834,109 +1934,32 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
                 ],
               ),
               const SizedBox(height: 32),
-              Text(
-                'QUANTS ANALYTICS REPORT',
-                style: GoogleFonts.outfit(
-                  color: const Color(0xFFC800FF),
-                  letterSpacing: 2,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  _buildStatCard(
-                    'AUM',
-                    item['aum'] ?? 'Confidential',
-                    Icons.account_balance_rounded,
-                  ),
-                  const SizedBox(width: 12),
-                  _buildStatCard(
-                    'Origin',
-                    '${item['flag'] ?? ""} ${item['origin'] ?? "Global"}',
-                    Icons.public_rounded,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildStatCard(
-                    'PNL/Year',
-                    item['pnl'] ?? '+12.5% Avg',
-                    Icons.insights_rounded,
-                  ),
-                  const SizedBox(width: 12),
-                  _buildStatCard(
-                    'Market Dominance',
-                    '${((item['dominance'] ?? 0.75) * 100).toInt()}%',
-                    Icons.leaderboard_rounded,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildStatCard(
-                    'Risk Profile',
-                    item['risk'] ?? 'Moderate',
-                    Icons.warning_rounded,
-                  ),
-                ],
-              ),
               const SizedBox(height: 32),
-              Text(
-                'QUALITATIVE ANALYSIS',
-                style: GoogleFonts.outfit(
-                  color: const Color(0xFFC800FF),
-                  letterSpacing: 2,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
+              _buildDetailSection(
+                'PENGERTIAN',
+                item['desc'] ??
+                    item['definition'] ??
+                    'Analisis sedang diproses.',
+                Colors.white,
               ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.1),
-                  ),
+              if (item['features'] != null)
+                _buildDetailSection(
+                  'CIRI-CIRI / KARAKTERISTIK',
+                  item['features']!,
+                  Colors.cyanAccent,
                 ),
-                child: Text(
-                  item['desc'] ??
-                      item['definition'] ??
-                      'Analisis mendalam sedang diproses oleh sistem.',
-                  style: GoogleFonts.outfit(
-                    color: Colors.white70,
-                    height: 1.6,
-                    fontSize: 14,
-                  ),
+              if (item['strategy'] != null)
+                _buildDetailSection(
+                  'TIPS & STRATEGI QUANTS',
+                  item['strategy']!,
+                  const Color(0xFFC800FF),
                 ),
-              ),
-              if (item['parameter'] != null) ...[
-                const SizedBox(height: 32),
-                Text(
-                  'TECHNICAL PARAMETERS',
-                  style: GoogleFonts.outfit(
-                    color: const Color(0xFFC800FF),
-                    letterSpacing: 2,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
+              if (item['aum'] != null && item['aum'] != 'N/A')
+                _buildDetailSection(
+                  'ESTIMASI KELOLAAN DANA',
+                  item['aum']!,
+                  const Color(0xFF39FF14),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  item['parameter']!,
-                  style: GoogleFonts.outfit(
-                    color: Colors.cyanAccent,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
               const SizedBox(height: 40),
             ],
           ),
@@ -1945,36 +1968,39 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.03),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+  Widget _buildDetailSection(String label, String content, Color contentColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.outfit(
+            color: const Color(0xFFC800FF),
+            letterSpacing: 2,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: Colors.white24, size: 18),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              style: const TextStyle(color: Colors.white38, fontSize: 10),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 24),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          ),
+          child: Text(
+            content,
+            style: GoogleFonts.outfit(
+              color: contentColor.withValues(alpha: 0.9),
+              height: 1.6,
+              fontSize: 14,
             ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: GoogleFonts.outfit(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -2106,10 +2132,10 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
           ..._topStories
               .map(
                 (news) => _buildNewsListItem(
-                  news['news'] ?? '',
-                  news['category'] ?? 'Market',
+                  news['title'] ?? news['news'] ?? '',
+                  news['source'] ?? news['category'] ?? 'Market',
                   _formatTime(news['time']),
-                  news['image'],
+                  news['imageUrl'] ?? news['image'],
                   news['url'],
                 ),
               )
@@ -2121,6 +2147,12 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
 
   String _formatTime(String? timeStr) {
     if (timeStr == null) return 'Recent';
+    // If it already looks like "X jam lalu" or "Baru saja", return it
+    if (timeStr.contains('jam') ||
+        timeStr.contains('Baru') ||
+        timeStr.contains('menit')) {
+      return timeStr;
+    }
     try {
       // Handle Google News RSS format: "Fri, 14 Feb 2025 07:00:00 GMT"
       final date = DateFormat("EEE, dd MMM yyyy HH:mm:ss Z").parse(timeStr);
@@ -2129,7 +2161,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
       if (diff.inHours < 24) return '${diff.inHours} hours ago';
       return DateFormat('MMM dd').format(date);
     } catch (e) {
-      return timeStr.split(' ').take(3).join(' '); // Fallback
+      return timeStr; // Return as is if parsing fails
     }
   }
 

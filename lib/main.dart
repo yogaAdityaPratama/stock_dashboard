@@ -447,43 +447,71 @@ class _DashboardScreenState extends State<DashboardScreen>
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    // Background Image
-                    CachedNetworkImage(
-                      imageUrl:
-                          (news['imageUrl'] != null &&
-                              news['imageUrl'].toString().trim().isNotEmpty)
-                          ? news['imageUrl'].toString().trim()
-                          : 'https://images.unsplash.com/photo-1611974717482-aa002b6624f1?w=800&auto=format',
+                    // Layer 1: Asset Background Fallback (Hardcoded Safety)
+                    Image.asset(
+                      'asset/bg.jpg',
                       fit: BoxFit.cover,
-                      color: Colors.black.withValues(alpha: 0.5),
+                      color: Colors.black.withValues(alpha: 0.3),
                       colorBlendMode: BlendMode.darken,
-                      placeholder: (context, url) => Container(
-                        color: const Color(0xFF13081E),
-                        child: const Center(
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              color: Color(0xFFC800FF),
-                              strokeWidth: 2,
-                            ),
-                          ),
+                    ),
+
+                    // Fixed Mask for Depth
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            const Color(0xFF1A0B2E).withValues(alpha: 0.4),
+                            const Color(0xFF0A0214).withValues(alpha: 0.8),
+                          ],
                         ),
                       ),
-                      errorWidget: (context, url, error) => Container(
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0xFF4B0082), Color(0xFF0A0214)],
-                          ),
-                        ),
-                        child: Center(
-                          child: Icon(
-                            Icons.image_not_supported_outlined,
-                            color: Colors.white.withValues(alpha: 0.1),
-                            size: 40,
-                          ),
+                    ),
+
+                    // Layer 2: News Image (Failsafe Overlay)
+                    Builder(
+                      builder: (context) {
+                        final String? rawUrl = news['imageUrl']?.toString();
+                        final bool isValidUrl =
+                            rawUrl != null &&
+                            rawUrl.isNotEmpty &&
+                            rawUrl.startsWith('http') &&
+                            rawUrl != 'null';
+
+                        if (!isValidUrl) {
+                          return const SizedBox.shrink(); // Show the Layer 1 Asset
+                        }
+
+                        return CachedNetworkImage(
+                          imageUrl: rawUrl,
+                          fit: BoxFit.cover,
+                          color: Colors.black.withValues(alpha: 0.45),
+                          colorBlendMode: BlendMode.darken,
+                          fadeOutDuration: const Duration(milliseconds: 300),
+                          fadeInDuration: const Duration(milliseconds: 300),
+                          placeholder: (context, url) =>
+                              const SizedBox.shrink(),
+                          errorWidget: (context, url, error) {
+                            debugPrint(
+                              'News Image Error, falling back to Asset BG: $url',
+                            );
+                            return const SizedBox.shrink(); // Show Layer 1 Asset
+                          },
+                        );
+                      },
+                    ),
+
+                    // Layer 3: Additional Visual Depth (Vignette)
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.7),
+                          ],
                         ),
                       ),
                     ),
