@@ -5,6 +5,8 @@ import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
 import 'package:intl/intl.dart';
+import 'msci_rebalancing_screen.dart';
+import 'financial_calendar_screen.dart';
 
 class BasicKnowledgeScreen extends StatefulWidget {
   const BasicKnowledgeScreen({super.key});
@@ -997,6 +999,32 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
       'strategy':
           'Masuknya SWF ke sebuah emiten seringkali merupakan sinyal "Restu Pemerintah" atau dukungan politik-ekonomi yang kuat.',
     },
+    {
+      'name': 'Milenial & Gen Z',
+      'code': 'RETAIL',
+      'type': 'Demographic',
+      'origin': 'Social Change',
+      'flag': '📱',
+      'desc':
+          'Gelombang baru investor ritel muda yang mendominasi jumlah SID (Single Investor Identification) baru di bursa.',
+      'features':
+          'Sangat bergantung pada informasi media sosial, menyukai saham teknologi, dan memiliki tingkat toleransi risiko tinggi.',
+      'strategy':
+          'Fenomena ini menciptakan likuiditas besar pada saham lapis 2 dan 3. Perlu waspada terhadap volatilitas ekstrim.',
+    },
+    {
+      'name': 'Pom-pom / Influencer',
+      'code': 'POM',
+      'type': 'Market Sentiment',
+      'origin': 'Social Media',
+      'flag': '📢',
+      'desc':
+          'Aksi mengajak orang lain untuk membeli saham tertentu yang dilakukan oleh tokoh berpengaruh demi kepentingan pribadi atau kelompok.',
+      'features':
+          'Seringkali tanpa analisis fundamental yang jelas, hanya menonjolkan potensi kenaikan harga (to the moon).',
+      'strategy':
+          'Lakukan riset mandiri (DYOR). Jangan pernah membeli saham hanya karena ajakan tanpa Trading Plan yang jelas.',
+    },
   ];
 
   final List<Map<String, dynamic>> conglomerates = [
@@ -1433,6 +1461,32 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
           'Control your emotions: greed and fear.',
           Icons.psychology_rounded,
         ),
+        const SizedBox(height: 8),
+        _buildActionCard(
+          'Rebalancing MSCI',
+          'Jadwal, data, dan informasi rebalancing MSCI di Mei dan November',
+          Icons.calendar_today_rounded,
+          const Color(0xFF39FF14),
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const MSCIRebalancingScreen(),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildActionCard(
+          'Kalender Finance',
+          'Jadwal lengkap: RUPS, Dividen, FOMC, Fed, dan event finansial lainnya',
+          Icons.event_rounded,
+          const Color(0xFFC800FF),
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const FinancialCalendarScreen(),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1482,6 +1536,79 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
           ),
           const Icon(Icons.chevron_right_rounded, color: Colors.white24),
         ],
+      ),
+    );
+  }
+
+  Widget _buildActionCard(
+    String title,
+    String description,
+    IconData icon,
+    Color accentColor,
+    VoidCallback onTap,
+  ) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              accentColor.withValues(alpha: 0.15),
+              accentColor.withValues(alpha: 0.05),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: accentColor.withValues(alpha: 0.4),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: accentColor, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: accentColor,
+              size: 24,
+            ),
+          ],
+        ),
       ),
     );
   }
