@@ -93,6 +93,22 @@ class ApiService {
     }
   }
 
+  /// Mengambil data fundamental saham (ROE, PBV, PER, DER, Dividend, etc)
+  Future<Map<String, dynamic>> getFundamentalData(String stockCode) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/fundamental'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'code': stockCode}),
+      );
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      return {};
+    } catch (e) {
+      debugPrint('Fundamental Data API Error: $e');
+      return {};
+    }
+  }
+
   Future<Map<String, dynamic>> getStockNews(String stockCode) async {
     try {
       final response = await http.post(

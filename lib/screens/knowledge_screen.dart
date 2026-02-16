@@ -15,6 +15,131 @@ class BasicKnowledgeScreen extends StatefulWidget {
   State<BasicKnowledgeScreen> createState() => _BasicKnowledgeScreenState();
 }
 
+
+/// Screen: Fundamental Glossary
+class FundamentalGlossaryScreen extends StatelessWidget {
+  const FundamentalGlossaryScreen({super.key});
+
+  final List<Map<String, String>> _terms = const [
+    {'term': 'ROE', 'desc': 'Return on Equity: Laba bersih dibagi ekuitas pemegang saham (%). Mengukur profitabilitas modal.'},
+    {'term': 'ROA', 'desc': 'Return on Assets: Laba bersih dibagi total aset. Efisiensi penggunaan aset.'},
+    {'term': 'EPS', 'desc': 'Earnings Per Share: Laba bersih per saham.'},
+    {'term': 'PER (P/E)', 'desc': 'Price-to-Earnings: Rasio harga saham terhadap laba per saham. Menilai valuasi relatif.'},
+    {'term': 'PBV', 'desc': 'Price-to-Book Value: Harga pasar dibagi nilai buku per saham.'},
+    {'term': 'Market Cap', 'desc': 'Kapitalisasi pasar: Harga saham x jumlah saham beredar.'},
+    {'term': 'Dividend Yield', 'desc': 'Dividen tahunan dibagi harga saham (%).'},
+    {'term': 'Debt-to-Equity', 'desc': 'Rasio utang terhadap ekuitas; ukuran leverage.'},
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Glosarium Fundamental'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1A0A2E), Color(0xFF0A0214)],
+          ),
+        ),
+        child: ListView.separated(
+          itemCount: _terms.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, i) {
+            final t = _terms[i];
+            return Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t['term']!, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                  const SizedBox(height: 6),
+                  Text(t['desc']!, style: GoogleFonts.outfit(color: Colors.white70, fontSize: 12)),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// Screen: Moody's Ratings Glossary
+class MoodysRatingsScreen extends StatelessWidget {
+  const MoodysRatingsScreen({super.key});
+
+  final List<Map<String, String>> _ratings = const [
+    {'rating': 'Aaa', 'desc': "Tertinggi: Risiko kredit sangat rendah. Kualitas kredit sangat kuat."},
+    {'rating': 'Aa', 'desc': "Sangat baik: Risiko kredit sangat rendah, sedikit lebih rentan terhadap kondisi ekonomi."},
+    {'rating': 'A', 'desc': "Baik: Risiko kredit rendah; sensitivitas moderat terhadap perubahan ekonomi."},
+    {'rating': 'Baa', 'desc': "Investment Grade rendah: Risiko moderat; mungkin rentan terhadap kondisi ekonomi."},
+    {'rating': 'Ba', 'desc': "Speculative: Risiko kredit material; bukan investment grade."},
+    {'rating': 'B', 'desc': "Lebih spekulatif: Risiko tinggi terhadap gagal bayar dalam kondisi buruk."},
+    {'rating': 'Caa', 'desc': "Sangat spekulatif: Risiko sangat tinggi; kemungkinan gagal bayar signifikan."},
+    {'rating': 'Ca', 'desc': "Terdekat pada gagal bayar: Sebagian besar obligasi ini sudah bermasalah."},
+    {'rating': 'C', 'desc': "Dalam kondisi gagal bayar atau sudah gagal bayar."},
+    {'rating': "Notches / Modifiers", 'desc': "Angka 1,2,3 (mis. Aa1,Aa2) menunjukkan peringkat relatif di dalam kategori."},
+    {'rating': "Short-term (P-1/P-2/P-3)", 'desc': "Penilaian likuiditas jangka pendek; P-1 terbaik, P-3 paling lemah di investment grade short-term."},
+    {'rating': "Investment Grade vs Speculative", 'desc': "Investment grade: Aaa – Baa3. Speculative (junk): Ba1 dan lebih rendah."},
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Moody's Ratings"),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1A0A2E), Color(0xFF0A0214)],
+          ),
+        ),
+        child: ListView.separated(
+          itemCount: _ratings.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, i) {
+            final r = _ratings[i];
+            return Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(r['rating']!, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                  const SizedBox(height: 6),
+                  Text(r['desc']!, style: GoogleFonts.outfit(color: Colors.white70, fontSize: 12)),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
 class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
   String searchQuery = '';
   late PageController _newsPageController;
@@ -25,6 +150,39 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
   List<dynamic> _topStories = [];
   bool _isTopNewsLoading = true;
   Map<String, String> _dynamicMarketTags = {}; // Dynamic tags from backend
+  String _newsScope = 'IDN'; // or 'Global'
+
+  final List<String> _globalKeywords = [
+    'global',
+    'war',
+    'finance',
+    'trump',
+    'the fed',
+    'thefed',
+    'moody',
+    'moody\'s',
+    'msci',
+    'ftse',
+    'oil',
+    'minyak',
+    'technology',
+    'tech',
+    'market',
+    'commodity',
+  ];
+  final List<String> _localIndicators = [
+    '.id',
+    'indonesia',
+    'kompas',
+    'kontan',
+    'cnbc indonesia',
+    'cnn indonesia',
+    'antaranews',
+    'bisnis',
+    'tempo',
+    'detik',
+    'tribun',
+  ];
 
   final List<Map<String, dynamic>> headlineNews = [
     {
@@ -763,6 +921,16 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
           'Indikasi saham sedang berusaha masuk ke radar "Running Trade" atau ingin masuk filter teknikal tertentu.',
     },
     {
+      'name': "Moody's Ratings",
+      'code': 'MOODY',
+      'type': 'Credit Rating',
+      'origin': 'Credit Agency',
+      'flag': '🔒',
+      'desc': 'Skala peringkat kredit internasional oleh Moody\'s Investors Service; digunakan untuk menilai risiko gagal bayar penerbit obligasi dan perusahaan.',
+      'features': 'Kategori Aaa -> C; tambahan notches 1/2/3 untuk pembagian dalam kategori. Pembagian Investment Grade vs Speculative (Junk).',
+      'strategy': 'Gunakan peringkat untuk menilai risiko kredit emiten; peringkat lebih tinggi menunjukkan kredit berkualitas dan biaya pinjaman lebih rendah.'
+    },
+    {
       'name': 'Cornering',
       'code': 'CORN',
       'type': 'Market Game',
@@ -1487,6 +1655,32 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
             ),
           ),
         ),
+        const SizedBox(height: 12),
+        _buildActionCard(
+          'Glosarium Fundamental',
+          'Penjelasan istilah fundamental (ROE, PER, PBV, FCF, EPS, dll.)',
+          Icons.menu_book_rounded,
+          const Color(0xFF10B981),
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const FundamentalGlossaryScreen(),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildActionCard(
+          "Moodys' Credit Ratings",
+          "Penjelasan singkat skala rating Moody's dan arti setiap kategori",
+          Icons.security_rounded,
+          const Color(0xFF6B7FF1),
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const MoodysRatingsScreen(),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1737,7 +1931,18 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
       itemBuilder: (context, index) {
         final term = terms[index];
         return InkWell(
-          onTap: () => _showAnalyticalDetail(term),
+          onTap: () {
+            if ((term['code'] ?? '').toString().toUpperCase() == 'MOODY') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const MoodysRatingsScreen(),
+                ),
+              );
+              return;
+            }
+            _showAnalyticalDetail(term);
+          },
           borderRadius: BorderRadius.circular(12),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
@@ -2235,14 +2440,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
           }).toList(),
         ),
         const SizedBox(height: 24),
-        Text(
-          'Top Stories',
-          style: GoogleFonts.outfit(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        _buildTopStoriesHeader(),
         const SizedBox(height: 12),
         if (_isTopNewsLoading)
           const Center(
@@ -2256,16 +2454,8 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
             ),
           )
         else
-          ..._topStories
-              .map(
-                (news) => _buildNewsListItem(
-                  news['title'] ?? news['news'] ?? '',
-                  news['source'] ?? news['category'] ?? 'Market',
-                  _formatTime(news['time']),
-                  news['imageUrl'] ?? news['image'],
-                  news['url'],
-                ),
-              )
+          ..._filteredTopStories()
+              .map((news) => _buildNewsListItem(news))
               .toList(),
         const SizedBox(height: 30),
       ],
@@ -2290,6 +2480,205 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
     } catch (e) {
       return timeStr; // Return as is if parsing fails
     }
+  }
+
+  Widget _buildTopStoriesHeader() {
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _newsScope = 'IDN'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              decoration: BoxDecoration(
+                color: _newsScope == 'IDN'
+                    ? Colors.purpleAccent.withOpacity(0.15)
+                    : Colors.white10.withOpacity(0.02),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: _newsScope == 'IDN'
+                        ? Colors.purpleAccent
+                        : Colors.white10),
+              ),
+              child: Center(
+                child: Text('IDN',
+                    style: GoogleFonts.outfit(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _newsScope = 'Global'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              decoration: BoxDecoration(
+                color: _newsScope == 'Global'
+                    ? Colors.purpleAccent.withOpacity(0.15)
+                    : Colors.white10.withOpacity(0.02),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: _newsScope == 'Global'
+                        ? Colors.purpleAccent
+                        : Colors.white10),
+              ),
+              child: Center(
+                child: Text('Global',
+                    style: GoogleFonts.outfit(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<dynamic> _filteredTopStories() {
+    try {
+      var filtered = _topStories.where((news) => _matchesScope(news)).toList();
+
+      // Convert to list with parsed dates
+      final now = DateTime.now();
+      List<Map<String, dynamic>> withDates = filtered.map((n) {
+        return {'news': n, 'date': _extractNewsDate(n) ?? now};
+      }).toList();
+
+      // Keep only items within the last 7 days for Global scope, otherwise keep IDN recent
+      if (_newsScope == 'Global') {
+        withDates = withDates.where((e) => now.difference(e['date']).inDays <= 7).toList();
+      }
+
+      // Sort descending by date
+      withDates.sort((a, b) => b['date'].compareTo(a['date']));
+
+      // Limit to max 15
+      var result = withDates.take(15).map((e) => e['news']).toList();
+
+      // If not enough global items, try to expand by including close matches within 7 days
+      if (_newsScope == 'Global' && result.length < 15) {
+        final additional = _topStories
+            .where((n) => !_matchesScope(n))
+            .where((n) {
+              final d = _extractNewsDate(n) ?? now;
+              return now.difference(d).inDays <= 7;
+            })
+            .where((n) {
+              // include if contains any global keyword even if not matched earlier
+              final t = (n['title'] ?? n['news'] ?? '').toString().toLowerCase();
+              for (var k in _globalKeywords) if (t.contains(k)) return true;
+              return false;
+            })
+            .take(15 - result.length)
+            .toList();
+
+        result.addAll(additional);
+      }
+
+      // Fallback: if still empty, include recent (<=7d) items regardless of scope up to 15
+      if (result.isEmpty) {
+        final fallback = _topStories
+            .where((n) {
+              final d = _extractNewsDate(n) ?? now;
+              return now.difference(d).inDays <= 7;
+            })
+            .toList();
+        result = fallback.take(15).toList();
+      }
+
+      return result;
+    } catch (e) {
+      return _topStories.take(15).toList();
+    }
+  }
+
+  DateTime? _extractNewsDate(dynamic news) {
+    try {
+      final t = news['time'] ?? news['publishedAt'] ?? news['pubDate'] ?? '';
+      if (t == null) return null;
+      final s = t.toString();
+
+      // ISO parse
+      final dp = DateTime.tryParse(s);
+      if (dp != null) return dp.toLocal();
+
+      // Google RSS format: "Fri, 14 Feb 2025 07:00:00 GMT"
+      try {
+        final parsed = DateFormat("EEE, dd MMM yyyy HH:mm:ss Z").parse(s);
+        return parsed.toLocal();
+      } catch (e) {}
+
+      // Relative times like '10 mins ago', '2 hours ago', '10 jam lalu'
+      final lower = s.toLowerCase();
+      final now = DateTime.now();
+      final minMatch = RegExp(r"(\d+)\s*mins?").firstMatch(lower);
+      if (minMatch != null) return now.subtract(Duration(minutes: int.parse(minMatch.group(1)!)));
+      final hourMatch = RegExp(r"(\d+)\s*hours?").firstMatch(lower);
+      if (hourMatch != null) return now.subtract(Duration(hours: int.parse(hourMatch.group(1)!)));
+      final jamMatch = RegExp(r"(\d+)\s*jam").firstMatch(lower);
+      if (jamMatch != null) return now.subtract(Duration(hours: int.parse(jamMatch.group(1)!)));
+      final hariMatch = RegExp(r"(\d+)\s*hari").firstMatch(lower);
+      if (hariMatch != null) return now.subtract(Duration(days: int.parse(hariMatch.group(1)!)));
+
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  bool _matchesScope(dynamic news) {
+    if (news == null) return false;
+    final title = (news['title'] ?? news['news'] ?? '').toString().toLowerCase();
+    final source = (news['source'] ?? news['category'] ?? '').toString().toLowerCase();
+    final url = (news['url'] ?? '').toString().toLowerCase();
+
+    if (_newsScope == 'Global') {
+      // Exclude obvious local sources/domains first
+      for (var li in _localIndicators) {
+        if (title.contains(li) || source.contains(li) || url.contains(li)) return false;
+      }
+
+      // Prefer known global outlets or external hosts
+      final globalOutlets = [
+        'reuters',
+        'bloomberg',
+        'ft.com',
+        'wsj',
+        'nytimes',
+        'cnn',
+        'cnbc',
+        'marketwatch',
+        'bbc',
+        'guardian',
+        'economist'
+      ];
+
+      // If url host or source/title matches global outlets, accept
+      try {
+        final uri = Uri.tryParse(url ?? '');
+        final host = uri?.host?.toLowerCase() ?? '';
+        for (var g in globalOutlets) {
+          if (host.contains(g) || title.contains(g) || source.contains(g)) return true;
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      // Finally, match by global keywords in title/source/url
+      for (var k in _globalKeywords) {
+        if (title.contains(k) || source.contains(k) || url.contains(k)) return true;
+      }
+
+      return false;
+    }
+
+    // IDN scope: prefer Indonesian sources or .id domains
+    final idnSources = ['indonesia', 'kompas', 'kontan', 'cnbc indonesia', 'cnn indonesia', 'antaranews', 'bisnis', 'tempo', 'detik', 'tribun', '.id'];
+    for (var s in idnSources) if (title.contains(s) || source.contains(s) || url.contains(s)) return true;
+
+    return false;
   }
 
   Widget _buildHeadlineNewsCard(Map<String, dynamic> news) {
@@ -2440,15 +2829,18 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
   }
 
   Widget _buildNewsListItem(
-    String title,
-    String tag,
-    String time,
-    String? imageUrl,
-    String? url,
+    dynamic news,
   ) {
+    final title = (news['title'] ?? news['news'] ?? '').toString();
+    final source = (news['source'] ?? news['category'] ?? 'Market').toString();
+    final imageUrl = (news['imageUrl'] ?? news['image'])?.toString();
+    final url = (news['url'] ?? '').toString();
+    final pubDate = _extractNewsDate(news);
+    final dateLabel = pubDate != null ? DateFormat('yyyy-MM-dd').format(pubDate) : _formatTime(news['time']);
+
     return GestureDetector(
       onTap: () async {
-        if (url != null) {
+        if (url.isNotEmpty) {
           final uri = Uri.parse(url);
           if (await canLaunchUrl(uri)) {
             await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -2473,7 +2865,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
                   Row(
                     children: [
                       Text(
-                        tag.toUpperCase(),
+                        source.toUpperCase(),
                         style: const TextStyle(
                           color: Color(0xFFC800FF),
                           fontSize: 9,
@@ -2487,7 +2879,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        time,
+                        dateLabel,
                         style: const TextStyle(
                           color: Colors.white54,
                           fontSize: 9,
@@ -2502,8 +2894,8 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.outfit(
                       color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],

@@ -6,31 +6,26 @@ import 'package:webview_flutter/webview_flutter.dart';
 /// ============================================================================
 ///
 /// Deskripsi:
-/// Widget ini berfungsi untuk merender grafik real-time dari TradingView menggunakan
-/// library webview_flutter. Mengikuti prinsip-prinsip Clean Code dan OOP.
+/// Widget responsif untuk menampilkan data market real-time.
+/// Dioptimalkan untuk "dark mode" dan tampilan mobile.
 ///
-/// Author: Senior Stock Programmer
-/// Language: Dart (Flutter)
+/// Updates:
+/// - Removed unnecessary white shimmer/loading
+/// - Improved HTML template for responsiveness
+/// - Added robust error handling
 /// ============================================================================
 
 class TradingViewChart extends StatefulWidget {
-  /// Kode saham (contoh: BBCA, TLKM)
   final String symbol;
-
-  /// Tema grafik ('light' atau 'dark')
   final String theme;
-
-  /// Tinggi widget
   final double height;
-
-  /// Interval grafik ('1', '5', '15', '60', 'D', 'W')
   final String interval;
 
   const TradingViewChart({
     super.key,
     required this.symbol,
     this.theme = 'dark',
-    this.height = 300,
+    this.height = 280, // Default adjusted for compact view
     this.interval = 'D',
   });
 
@@ -45,15 +40,13 @@ class _TradingViewChartState extends State<TradingViewChart> {
   @override
   void initState() {
     super.initState();
-    _initializeWebViewController();
+    _initializeChart();
   }
 
-  /// Inisialisasi controller WebView dengan konfigurasi TradingView
-  void _initializeWebViewController() {
-    // Memastikan format simbol sesuai standar TradingView (IDX:TICKER)
-    final String formattedSymbol = widget.symbol.contains(':')
-        ? widget.symbol
-        : 'IDX:${widget.symbol}';
+  void _initializeChart() {
+    // Ensure idx symbol format
+    final String cleanSymbol = widget.symbol.replaceAll('IDX:', '');
+    final String formattedSymbol = 'IDX:$cleanSymbol';
 
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -61,81 +54,96 @@ class _TradingViewChartState extends State<TradingViewChart> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (String url) {
-            if (mounted) {
-              setState(() {
-                _isLoading = false;
-              });
-            }
+            if (mounted) setState(() => _isLoading = false);
+          },
+          onWebResourceError: (error) {
+            debugPrint('TradingView Error: ${error.description}');
           },
         ),
       )
-      ..loadHtmlString(
-        _getHtmlContent(formattedSymbol, widget.theme, widget.interval),
-      );
+      ..loadHtmlString(_getChartHtml(formattedSymbol));
   }
 
-  /// Menghasilkan konten HTML untuk widget TradingView
-  /// Menggunakan Template String untuk injeksi parameter
-  String _getHtmlContent(String symbol, String theme, String interval) {
+  /// Generate HTML untuk TradingView chart dengan dark theme optimization
+  ///
+  /// IMPORTANT: Menggunakan background color solid (#1A0A2E) instead of transparent
+  /// untuk menghindari white flash saat loading di WebView. Color ini matching
+  /// dengan app theme utama untuk seamless experience.
+  String _getChartHtml(String symbol) {
     return '''
-    <!DOCTYPE html>
-    <html lang="id">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-      <style>
-        body, html {
-          margin: 0;
-          padding: 0;
-          height: 100%;
-          width: 100%;
-          background-color: transparent;
-          overflow: hidden;
-        }
-        #tradingview_container {
-          height: 100vh;
-          width: 100vw;
-        }
-      </style>
-    </head>
-    <body>
-      <div id="tradingview_container"></div>
-      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-      <script type="text/javascript">
-        new TradingView.widget({
-          "autosize": true,
-          "symbol": "$symbol",
-          "interval": "$interval",
-          "timezone": "Asia/Jakarta",
-          "theme": "$theme",
-          "style": "1",
-          "locale": "id",
-          "toolbar_bg": "#f1f3f6",
-          "enable_publishing": false,
-          "hide_top_toolbar": false,
-          "hide_legend": false,
-          "save_image": false,
-          "container_id": "tradingview_container"
-        });
-      </script>
-    </body>
-    </html>
+      <!DOCTYPE html>
+      <html lang="id">
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            html, body { 
+              margin: 0; 
+              padding: 0; 
+              background-color: #1A0A2E; 
+              overflow: hidden; 
+              width: 100%;
+              height: 100%;
+            }
+            #tradingview_chart { 
+              position: absolute; 
+              top: 0; 
+              left: 0; 
+              width: 100%; 
+              height: 100%; 
+              background-color: #1A0A2E;
+            }
+          </style>
+        </head>
+        <body>
+          <div id="tradingview_chart"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+          <script type="text/javascript">
+            new TradingView.widget({
+              "autosize": true,
+              "symbol": "$symbol",
+              "interval": "${widget.interval}",
+              "timezone": "Asia/Jakarta",
+              "theme": "${widget.theme}",
+              "style": "1",
+              "locale": "id",
+              "enable_publishing": false,
+              "allow_symbol_change": true,
+              "container_id": "tradingview_chart",
+              "hide_side_toolbar": false,
+              "hide_top_toolbar": false,
+              "save_image": false,
+              "backgroundColor": "#1A0A2E",
+              "gridColor": "rgba(255, 255, 255, 0.05)"
+            });
+          </script>
+        </body>
+      </html>
     ''';
   }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return Container(
       height: widget.height,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Stack(
         children: [
-          // Widget WebView Utama
           WebViewWidget(controller: _controller),
-
-          // Loading Indicator (Shimmer/Overlay)
           if (_isLoading)
             const Center(
-              child: CircularProgressIndicator(color: Color(0xFFC800FF)),
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.cyanAccent,
+                ),
+              ),
             ),
         ],
       ),

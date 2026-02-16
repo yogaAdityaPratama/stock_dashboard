@@ -5,7 +5,6 @@ import 'dart:async'; // Added for News Slider Timer
 import 'package:fl_chart/fl_chart.dart'; // Ensure fl_chart is added for mini charts
 
 import 'screens/screening_screen.dart';
-import 'screens/placeholder_screens.dart';
 import 'screens/calculator_screen.dart';
 import 'screens/watchlist_screen.dart';
 import 'screens/stocks_screen.dart';
@@ -13,6 +12,9 @@ import 'screens/forecast_screen.dart';
 import 'screens/trading_plan_screen.dart';
 import 'screens/knowledge_screen.dart';
 import 'screens/analysis_screen.dart';
+import 'screens/portfolio_screen.dart';
+import 'screens/community_screen.dart';
+import 'screens/profile_screen.dart';
 import 'services/api_service.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -78,8 +80,8 @@ class _MainContainerState extends State<MainContainer> {
           });
         },
       ),
+      const PortfolioScreen(),
       const ScreeningScreen(),
-
       const CommunityScreen(),
       const ProfileScreen(),
     ];
@@ -116,12 +118,14 @@ class _MainContainerState extends State<MainContainer> {
                   icon: Icon(Icons.home_rounded),
                   label: 'Home',
                 ),
-
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.pie_chart_rounded),
+                  label: 'Portfolio',
+                ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.psychology_rounded),
                   label: 'AI Screen',
                 ),
-
                 BottomNavigationBarItem(
                   icon: Icon(Icons.forum_rounded),
                   label: 'Community',
@@ -303,6 +307,15 @@ class _DashboardScreenState extends State<DashboardScreen>
         title: Image.asset('asset/logo.png', height: 80),
         backgroundColor: Colors.transparent,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.search_rounded),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const StocksScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.notifications_none_rounded),
             onPressed: () {},
@@ -1004,7 +1017,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Text(
-        'DISCLAIMER: Nilai portofolio dan kinerja saham yang ditampilkan hanya untuk tujuan informasi. Kinerja masa lalu tidak menjamin hasil di masa depan. Selalu lakukan riset menyeluruh sebelum mengambil keputusan investasi.',
+        'DISCLAIMER: MSCI, FTSE, dan Hype hanya perkiraan bertujuan untuk  informasi. Kinerja masa lalu tidak menjamin hasil di masa depan. Selalu lakukan riset menyeluruh sebelum mengambil keputusan investasi (DYOR).',
         textAlign: TextAlign.center,
         style: GoogleFonts.outfit(
           color: Colors.grey.withValues(alpha: 0.6),
