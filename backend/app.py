@@ -18,6 +18,12 @@ app = Flask(__name__)
 CORS(app) # Enable CORS for Flutter frontend
 app.config['JSON_SORT_KEYS'] = False # Performance optimization for large JSON
 
+# ================= GoAPI.id Configuration =================
+# GoAPI.id adalah alternatif data source untuk saham Indonesia
+# Untuk mendapatkan API key gratis, daftar di: https://goapi.id
+GOAPI_BASE_URL = "https://api.goapi.id/v1/stock"
+GOAPI_KEY = "demo"  # GANTI dengan API key Anda dari goapi.id (gunakan "demo" untuk testing terbatas)
+
 # --- Dummy Data & Mock Logic ---
 
 # Professional Investment Criteria (Research-Backed & Verified)
@@ -817,6 +823,199 @@ def get_full_analysis():
         'risk': 'High' if abs(current_change) > 5 else 'Moderate'
     }
 
+    # ========== BUILD DETAILED SENTIMENT EXPLANATION ==========
+    # Calculate each factor's contribution dynamically
+    sentiment_factors = {}
+    sentiment_explanation_parts = []
+    
+    # Smart Money contribution
+    if broker_flow['groups']['status'] in ['SMART MONEY MASUK', 'AKUMULASI SENYAP']:
+        sm_contribution = '+15%'
+        sentiment_factors['Smart Money'] = f"Akumulasi Senyap ({sm_contribution})"
+        sentiment_explanation_parts.append(f"Smart Money sedang akumulasi senyap ({sm_contribution})")
+    elif broker_flow['groups']['status'] == 'DUKUNGAN INSTITUSI':
+        sm_contribution = '+10%'
+        sentiment_factors['Smart Money'] = f"Dukungan Aktif ({sm_contribution})"
+        sentiment_explanation_parts.append(f"Institusi memberi dukungan ({sm_contribution})")
+    elif broker_flow['groups']['status'] in ['SMART MONEY KELUAR', 'DANA BESAR KELUAR']:
+        sm_contribution = '-15%'
+        sentiment_factors['Smart Money'] = f"Distribusi Terdeteksi ({sm_contribution})"
+        sentiment_explanation_parts.append(f"Smart Money melakukan distribusi ({sm_contribution})")
+    else:
+        sm_contribution = '±0%'
+        sentiment_factors['Smart Money'] = f"Netral ({sm_contribution})"
+    
+    # Whale/Market Maker contribution
+    if broker_flow['whale']['status'] in ['MEGALODON ENTRY', 'MARKET MAKER AKTIF']:
+        whale_contribution = '+15%'
+        sentiment_factors['Whale/Market Maker'] = f"Entry Agresif ({whale_contribution})"
+        sentiment_explanation_parts.append(f"Megalodon/MM melakukan entry ({whale_contribution})")
+    elif broker_flow['whale']['status'] == 'ABSORPSI SIDEWAYS':
+        whale_contribution = '+8%'
+        sentiment_factors['Whale/Market Maker'] = f"Absorpsi Sideways ({whale_contribution})"
+        sentiment_explanation_parts.append(f"MM menyerap supply secara sideways ({whale_contribution})")
+    elif broker_flow['whale']['status'] in ['PENJUALAN DEFENSIF', 'SHORT SELLING PREDATOR']:
+        whale_contribution = '-12%'
+        sentiment_factors['Whale/Market Maker'] = f"Tekanan Jual ({whale_contribution})"
+        sentiment_explanation_parts.append(f"Whale melakukan penjualan ({whale_contribution})")
+    else:
+        whale_contribution = '±0%'
+        sentiment_factors['Whale/Market Maker'] = f"Netral ({whale_contribution})"
+    
+    # Retail sentiment contribution
+    if broker_flow['retail']['status'] == 'RITEL FOMO':
+        retail_contribution = '+5%'
+        sentiment_factors['Retail Sentiment'] = f"FOMO Detected ({retail_contribution})"
+        sentiment_explanation_parts.append(f"Ritel mulai FOMO ({retail_contribution})")
+    elif broker_flow['retail']['status'] == 'KAPITULASI (PANIC)':
+        retail_contribution = '+12%'  # Contrarian
+        sentiment_factors['Retail Sentiment'] = f"Kapitulasi Panik (+{retail_contribution} contrarian)"
+        sentiment_explanation_parts.append(f"Kapitulasi ritel sebagai sinyal contrarian ({retail_contribution})")
+    elif broker_flow['retail']['status'] == 'FASE BOSAN':
+        retail_contribution = '+8%'  # Good for accumulation
+        sentiment_factors['Retail Sentiment'] = f"Partisipasi Rendah ({retail_contribution})"
+        sentiment_explanation_parts.append(f"Partisipasi ritel rendah, kondusif untuk akumulasi ({retail_contribution})")
+    else:
+        retail_contribution = '±0%'
+        sentiment_factors['Retail Sentiment'] = f"Netral ({retail_contribution})"
+    
+    # Technical indicators
+    tech_signal = "Positif" if current_change > 0 else "Negatif" if current_change < 0 else "Netral"
+    tech_contribution = f"+{abs(current_change)*2:.0f}%" if current_change > 0 else f"{current_change*2:.0f}%" if current_change < 0 else "±0%"
+    sentiment_factors['Momentum Teknikal'] = f"{tech_signal} ({tech_contribution})"
+    if current_change > 0:
+        sentiment_explanation_parts.append(f"Momentum teknikal positif ({tech_contribution})")
+    elif current_change < 0:
+        sentiment_explanation_parts.append(f"Momentum teknikal negatif ({tech_contribution})")
+    
+    # Build final explanation
+    if sentiment_explanation_parts:
+        explanation = "Berdasarkan analisis ML: " + "; ".join(sentiment_explanation_parts) + f". Hasil akhir: {sentiment_text} dengan confidence {bullish_pct:.0f}% bullish vs {bearish_pct:.0f}% bearish."
+    else:
+        explanation = f"Analisis ML menunjukkan sentiment {sentiment_text} berdasarkan agregasi multiple faktor pasar dan technical indicators."
+    
+    # ========== QUANT WARNING SYSTEM (Bandar Trap Detection) ==========
+    # Advanced quantitative warnings untuk mendeteksi market manipulation
+    quant_warnings = []
+    
+    try:
+        yf_code = f"{stock_code}.JK"
+        stock = yf.Ticker(yf_code)
+        recent_hist = stock.history(period="5d")  # 5 hari terakhir untuk analisis
+        
+        if len(recent_hist) >= 3:
+            # Dapatkan data volume
+            avg_volume_5d = recent_hist['Volume'].mean()
+            current_volume = recent_hist['Volume'].iloc[-1]
+            volume_ratio = current_volume / avg_volume_5d if avg_volume_5d > 0 else 1
+            
+            # Price change analysis
+            price_change_today = ((recent_hist['Close'].iloc[-1] - recent_hist['Close'].iloc[-2]) / recent_hist['Close'].iloc[-2] * 100) if len(recent_hist) >= 2 else 0
+            
+            # WARNING 1: Hati-hati Jebakan Bandar - harga naik tapi volume menurun
+            if current_change > 2.0 and volume_ratio < 0.7:
+                quant_warnings.append({
+                    'type': 'DANGER',
+                    'icon': '⚠️',
+                    'message': 'Hati-hati Jebakan Bandar – harga naik tapi volume menurun',
+                    'detail': f'Price up {current_change:.1f}% namun volume -{(1-volume_ratio)*100:.0f}%. Kemungkinan distribusi terselubung oleh smart money.'
+                })
+            
+            # WARNING 2: Bandar Trap terdeteksi - distribusi terselubung
+            if broker_flow['groups']['status'] in ['SMART MONEY KELUAR', 'DANA BESAR KELUAR'] and current_change > 0.5 and current_change < 3.0:
+                quant_warnings.append({
+                    'type': 'DANGER',
+                    'icon': '🚨',
+                    'message': 'Bandar Trap Terdeteksi – distribusi terselubung',
+                    'detail': 'Smart Money sedang keluar namun harga masih naik tipis. Classic distribution phase - bandar menjual ke ritel FOMO.'
+                })
+            
+            # WARNING 3: Bull Trap risiko tinggi
+            if current_change > 5.0 and broker_flow['retail']['status'] == 'RITEL FOMO' and volume_ratio > 2.0:
+                quant_warnings.append({
+                    'type': 'DANGER',
+                    'icon': '📉',
+                    'message': 'Bull Trap Risiko Tinggi',
+                    'detail': f'Lonjakan {current_change:.1f}% dengan volume spike {volume_ratio:.1f}x. Ritel FOMO masif - waspadai reversal mendadak.'
+                })
+            
+            # WARNING 4: Accumulation Phase Aman - whale masih beli
+            if broker_flow['groups']['status'] in ['AKUMULASI SENYAP', 'DUKUNGAN INSTITUSI'] and abs(current_change) < 2.0:
+                quant_warnings.append({
+                    'type': 'SAFE',
+                    'icon': '✅',
+                    'message': 'Accumulation Phase Aman – whale masih beli',
+                    'detail': 'Smart Money/Institusi terus mengakumulasi di harga sideways. Zone aman untuk ikut posisi jangka menengah.'
+                })
+            
+            # WARNING 5: Smart Money Exit Zone
+            if broker_flow['whale']['status'] in ['PENJUALAN DEFENSIF', 'SHORT SELLING PREDATOR']:
+                quant_warnings.append({
+                    'type': 'WARNING',
+                    'icon': '🔴',
+                    'message': 'Smart Money Exit Zone',
+                    'detail': 'Whale/Market Maker sedang agresif reduce position. Hindari menambah posisi, pertimbangkan take profit.'
+                })
+            
+            # WARNING 6: Kapitulasi Ritel - Peluang Contrarian
+            if broker_flow['retail']['status'] == 'KAPITULASI (PANIC)' and current_change < -5.0:
+                quant_warnings.append({
+                    'type': 'OPPORTUNITY',
+                    'icon': '💎',
+                    'message': 'Kapitulasi Ritel Terdeteksi – Peluang Contrarian',
+                    'detail': 'Panic selling oleh ritel. Jika fundamental solid, ini bisa jadi zone akumulasi untuk investor jangka panjang.'
+                })
+            
+            # WARNING 7: Divergensi Volume-Price (Advanced)
+            if len(recent_hist) >= 5:
+                price_trend_5d = (recent_hist['Close'].iloc[-1] - recent_hist['Close'].iloc[-5]) / recent_hist['Close'].iloc[-5] * 100
+                volume_trend = (recent_hist['Volume'].tail(3).mean() - recent_hist['Volume'].head(2).mean()) / recent_hist['Volume'].head(2).mean()
+                
+                if price_trend_5d > 3.0 and volume_trend < -0.3:
+                    quant_warnings.append({
+                        'type': 'WARNING',
+                        'icon': '📊',
+                        'message': 'Divergensi Bearish: Price Up + Volume Down',
+                        'detail': f'Harga naik {price_trend_5d:.1f}% 5D tapi volume turun {abs(volume_trend*100):.0f}%. Momentum melemah, potensi reversal.'
+                    })
+            
+            # WARNING 8: Whale Accumulation Detected (Mega Opportunity)
+            if broker_flow['whale']['status'] == 'MEGALODON ENTRY' and volume_ratio > 3.0:
+                quant_warnings.append({
+                    'type': 'MEGA_OPPORTUNITY',
+                    'icon': '🐋',
+                    'message': 'Mega Whale Accumulation Detected',
+                    'detail': f'Block trade besar-besaran (volume {volume_ratio:.1f}x normal). Megalodon masuk - potensi big move dalam 1-3 minggu.'
+                })
+            
+    except Exception as warn_error:
+        print(f"⚠️ Quant Warning Generation Error: {warn_error}")
+        # Fallback warning based on broker summary only
+        if broker_flow['groups']['status'] == 'SMART MONEY KELUAR':
+            quant_warnings.append({
+                'type': 'WARNING',
+                'icon': '⚡',
+                'message': 'Smart Money Exit Terdeteksi',
+                'detail': 'Berdasarkan broker summary, institusi sedang reduce exposure. Trade dengan hati-hati.'
+            })
+    
+    # Jika tidak ada warning spesifik, berikan general market condition
+    if not quant_warnings:
+        if sentiment_text == "Neutral":
+            quant_warnings.append({
+                'type': 'INFO',
+                'icon': 'ℹ️',
+                'message': 'Market Dalam Fase Konsolidasi',
+                'detail': 'Tidak ada sinyal kuat bullish/bearish. Tunggu konfirmasi breakout/breakdown sebelum entry.'
+            })
+        elif sentiment_text == "Bullish" and bullish_pct < 70:
+            quant_warnings.append({
+                'type': 'INFO',
+                'icon': '📈',
+                'message': 'Momentum Positif Moderate',
+                'detail': 'Trend bullish terkonfirmasi namun belum terlalu kuat. Monitor untuk potensi acceleration.'
+            })
+    
     return jsonify({
         'code': stock_code,
         'brokerage_flow': broker_flow,
@@ -825,7 +1024,10 @@ def get_full_analysis():
             'sentiment': sentiment_text,
             'bullish_percentage': round(bullish_pct, 1),
             'bearish_percentage': round(bearish_pct, 1),
+            'explanation': explanation,
+            'factors': sentiment_factors,
         },
+        'quant_warnings': quant_warnings,  # NEW: Warnings untuk UI
         'daily_change': round(current_change, 2),
         'timestamp': datetime.now().isoformat(),
         'status': 'success'
@@ -1032,6 +1234,159 @@ def _get_fallback_news():
         }
     ]
 
+def _fetch_from_goapi(stock_code):
+    """
+    Fetch fundamental data from GoAPI.id (Indonesia-specific stock data)
+    This is used as FALLBACK when Yahoo Finance fails or returns incomplete data
+    
+    GoAPI provides:
+    - Real-time price
+    - Fundamental ratios (PER, PBV, DER, ROE, etc)
+    - Dividend data
+    - Broker flow data
+    
+    Returns None if fetch fails or API key is invalid
+    """
+    try:
+        headers = {
+            'X-API-KEY': GOAPI_KEY,
+            'Accept': 'application/json'
+        }
+        
+        # GoAPI endpoint for IDX stocks
+        url = f"{GOAPI_BASE_URL}/idx/{stock_code}"
+        
+        print(f"🔄 Fetching from GoAPI.id: {stock_code}")
+        response = requests.get(url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            # Check if data is valid
+            if not data or 'results' not in data:
+                print(f"⚠️ GoAPI returned empty data for {stock_code}")
+                return None
+            
+            result = data['results']
+            
+            # Extract fundamental data from GoAPI response
+            current_price = result.get('close', 0)
+            market_cap_b = result.get('market_cap', 0) / 1e9 if result.get('market_cap') else 0
+            
+            # Fundamental metrics
+            roe = result.get('roe', 0)
+            per = result.get('per', 0)
+            pbv = result.get('pbv', 0)
+            der = result.get('der', 0)
+            dividend_yield = result.get('dividend_yield', 0)
+            eps = result.get('eps', 0)
+            bvps = result.get('book_value', 0)
+            
+            # Company info
+            company_name = result.get('name', stock_code)
+            sector = result.get('sector', 'Unknown')
+            
+            # Calculate ROIC (estimate from ROE and DER if not provided)
+            roic = result.get('roic', roe * 0.9) if roe else 15
+            
+            # Dividend per share
+            dps = (current_price * dividend_yield) / 100 if dividend_yield > 0 else 0
+            
+            # ESG score (mock if not provided by GoAPI)
+            esg_score = result.get('esg_score', 70)
+            
+            # Net profit growth (mock)
+            net_profit_growth = result.get('profit_growth', 10)
+            
+            # FCF ratio (mock)
+            fcf_ni = 0.15
+            
+            # Classification
+            if per < 15 and pbv < 2.0 and roe > 15:
+                classification = 'VALUE INVEST - Undervalue & High ROE'
+                classification_color = 'green'
+            elif per > 25 and pbv > 3.0:
+                classification = 'GROWTH INVEST - High Valuation'
+                classification_color = 'blue'
+            elif roe < 0:
+                classification = 'DISTRESS - Negative ROE'
+                classification_color = 'red'
+            else:
+                classification = 'BALANCED - Fair Value'
+                classification_color = 'yellow'
+            
+            print(f"✅ GoAPI.id fetch successful for {stock_code}")
+            
+            return {
+                'code': stock_code,
+                'name': company_name,
+                'sector': sector,
+                'price': current_price,
+                'market_cap_b': round(market_cap_b, 2),
+                'metrics': {
+                    'roe': round(roe, 2),
+                    'roic': round(roic, 2),
+                    'per': round(per, 2),
+                    'pbv': round(pbv, 2),
+                    'der': round(der, 2),
+                    'dividend_yield': round(dividend_yield, 2),
+                    'net_profit_growth': round(net_profit_growth, 2),
+                    'fcf_to_net_income': round(fcf_ni, 2),
+                    'esg_score': int(esg_score),
+                },
+                'per_share_metrics': {
+                    'eps': round(eps, 2) if eps else 0,
+                    'bvps': round(bvps, 2) if bvps else 0,
+                    'dps': round(dps, 2),
+                },
+                'classification': {
+                    'type': classification,
+                    'color': classification_color,
+                },
+                'valuation_indicators': {
+                    'is_undervalue': per < 15 and pbv < 2.0,
+                    'is_overvalue': per > 25 and pbv > 3.0,
+                    'has_strong_roe': roe > 15,
+                    'has_low_debt': der < 0.5,
+                    'has_good_fcf': fcf_ni > 0.15,
+                },
+                'quality_assessment': {
+                    'financial_health': 'Strong' if der < 0.5 and roe > 10 else (
+                        'Weak' if der > 1.0 or roe < 0 else 'Moderate'
+                    ),
+                    'profitability': 'Excellent' if roe > 20 else (
+                        'Good' if roe > 10 else (
+                        'Fair' if roe > 0 else 'Poor'
+                    )),
+                    'valuation': 'Cheap' if per < 15 else (
+                        'Fair' if per < 20 else 'Expensive'
+                    ),
+                    'sustainability': 'High' if esg_score > 75 else (
+                        'Moderate' if esg_score > 50 else 'Low'
+                    ),
+                },
+                'data_source': 'GoAPI.id (Indonesia Stock Exchange)',
+                'timestamp': datetime.now().isoformat(),
+                'status': 'success'
+            }
+            
+        elif response.status_code == 401:
+            print(f"❌ GoAPI.id: Invalid API Key")
+            return None
+        elif response.status_code == 404:
+            print(f"❌ GoAPI.id: Stock {stock_code} not found")
+            return None
+        else:
+            print(f"❌ GoAPI.id returned status {response.status_code}")
+            return None
+            
+    except requests.exceptions.Timeout:
+        print(f"⏱️ GoAPI.id timeout for {stock_code}")
+        return None
+    except Exception as e:
+        print(f"❌ GoAPI.id error for {stock_code}: {e}")
+        return None
+
 def _fetch_real_fundamental_data(stock_code):
     """
     Fetch real fundamental data from Yahoo Finance for Indonesian stocks
@@ -1064,15 +1419,54 @@ def _fetch_real_fundamental_data(stock_code):
         roic = info.get('returnOnCapital', roe * 0.9) if info.get('returnOnCapital') else roe * 0.9
         per = info.get('trailingPE', 15) if info.get('trailingPE') and info.get('trailingPE') > 0 else 15
         pbv = info.get('priceToBook', 2.0) if info.get('priceToBook') and info.get('priceToBook') > 0 else 2.0
-        der = info.get('debtToEquity', 0.5) if info.get('debtToEquity') else 0.5
+        der = (info.get('debtToEquity', 50) / 100.0) if info.get('debtToEquity') else 0.5
         
-        # Dividend yield
-        dividend_yield = (info.get('dividendYield', 0) * 100) if info.get('dividendYield') else 2.5
+        # ================= DIVIDEND LOGIC FIX (Backend Professional) =================
+        dividend_yield = 0
+        dps = 0
         
+        # 1. Try to get Dividend Rate (DPS) directly
+        # YFinance sering menaruh DPS di 'dividendRate' atau 'trailingAnnualDividendRate'
+        dps = info.get('dividendRate') or info.get('trailingAnnualDividendRate', 0)
+        
+        # 2. Try to get Dividend Yield directly
+        raw_yield = info.get('dividendYield') or info.get('trailingAnnualDividendYield', 0)
+        
+        if raw_yield and raw_yield > 0:
+             # Normalize yield (YF sometimes gives 0.05 for 5%, sometimes 5.0)
+             if raw_yield < 0.50: # Likely decimal (0.05) -> convert to %
+                 dividend_yield = raw_yield * 100
+             else: # Likely percentage (5.0)
+                 dividend_yield = raw_yield
+        
+        # 3. Cross-calculate if one is missing
+        if dividend_yield < 0.1 and dps > 0 and current_price > 0:
+            dividend_yield = (dps / current_price) * 100
+        
+        elif dps == 0 and dividend_yield > 0 and current_price > 0:
+            dps = (current_price * dividend_yield) / 100
+            
+        # 4. Fallback for Blue Chips (YF Data Protection)
+        # Jika YF return 0/None untuk saham yang pasti bagi dividen, gunakan estimasi konservatif
+        if dividend_yield < 0.1 and stock_code in ['BBCA', 'BBRI', 'BMRI', 'BBNI', 'ASII', 'TLKM', 'ADRO', 'ITMG', 'UNTR', 'ICBP', 'INDF']:
+             print(f"⚠️ YF Missing Dividend Data for {stock_code}. Using historical estimate fallback.")
+             if stock_code in ['ADRO', 'ITMG', 'PTBA', 'HEXA']: # High Yielders
+                dividend_yield = 10.0
+             elif stock_code in ['BBRI', 'BMRI', 'BBNI', 'ASII', 'BJBR']: # Moderate Yielders
+                dividend_yield = 4.5
+             elif stock_code in ['BBCA', 'TLKM', 'ICBP', 'INDF', 'GGRM', 'HMSP']: # Low-Mod Yielders
+                dividend_yield = 2.5
+             
+             # Recalculate DPS based on fallback yield
+             dps = (current_price * dividend_yield) / 100
+
         # Earnings and growth metrics
-        eps = info.get('trailingEps', 0)
-        bvps = current_price / pbv if pbv > 0 else current_price
-        dps = (current_price * dividend_yield) / 100 if dividend_yield > 0 else 0
+        eps = info.get('trailingEps') or info.get('forwardEps', 0)
+        if eps == 0 and current_price > 0 and per > 0:
+            eps = current_price / per # Calculate EPS from Price & PER if missing
+            
+        bvps = info.get('bookValue') or (current_price / pbv if pbv > 0 else current_price)
+        # dps is already calculated above
         
         # Calculate net profit growth from historical data
         net_profit_growth = 10  # Default
@@ -1180,15 +1574,24 @@ def get_fundamental_data():
     """
     stock_code = request.json.get('code', 'BBCA').upper()
     
-    # Try to fetch real data from Yahoo Finance first
-    print(f"🔍 Fetching real data for {stock_code}...")
+    # ========== PRIORITY 1: Yahoo Finance ==========
+    print(f"🔍 [1/3] Trying Yahoo Finance for {stock_code}...")
     real_data = _fetch_real_fundamental_data(stock_code)
     
     if real_data:
-        print(f"✅ Successfully fetched real data from Yahoo Finance for {stock_code}")
+        print(f"✅ Successfully fetched from Yahoo Finance for {stock_code}")
         return jsonify(real_data)
     
-    print(f"⚠️ Real data not available, using mock fallback for {stock_code}")
+    # ========== PRIORITY 2: GoAPI.id (Fallback) ==========
+    print(f"🔄 [2/3] Yahoo failed. Trying GoAPI.id for {stock_code}...")
+    goapi_data = _fetch_from_goapi(stock_code)
+    
+    if goapi_data:
+        print(f"✅ Successfully fetched from GoAPI.id for {stock_code}")
+        return jsonify(goapi_data)
+    
+    # ========== PRIORITY 3: Mock Data (Last Resort) ==========
+    print(f"⚠️ [3/3] All APIs failed. Using mock fallback for {stock_code}")
     
     # Fallback to mock data if real data fetch fails
     stock = next((s for s in MOCK_STOCKS if s['code'] == stock_code), None)

@@ -15,20 +15,43 @@ class BasicKnowledgeScreen extends StatefulWidget {
   State<BasicKnowledgeScreen> createState() => _BasicKnowledgeScreenState();
 }
 
-
 /// Screen: Fundamental Glossary
 class FundamentalGlossaryScreen extends StatelessWidget {
   const FundamentalGlossaryScreen({super.key});
 
   final List<Map<String, String>> _terms = const [
-    {'term': 'ROE', 'desc': 'Return on Equity: Laba bersih dibagi ekuitas pemegang saham (%). Mengukur profitabilitas modal.'},
-    {'term': 'ROA', 'desc': 'Return on Assets: Laba bersih dibagi total aset. Efisiensi penggunaan aset.'},
+    {
+      'term': 'ROE',
+      'desc':
+          'Return on Equity: Laba bersih dibagi ekuitas pemegang saham (%). Mengukur profitabilitas modal.',
+    },
+    {
+      'term': 'ROA',
+      'desc':
+          'Return on Assets: Laba bersih dibagi total aset. Efisiensi penggunaan aset.',
+    },
     {'term': 'EPS', 'desc': 'Earnings Per Share: Laba bersih per saham.'},
-    {'term': 'PER (P/E)', 'desc': 'Price-to-Earnings: Rasio harga saham terhadap laba per saham. Menilai valuasi relatif.'},
-    {'term': 'PBV', 'desc': 'Price-to-Book Value: Harga pasar dibagi nilai buku per saham.'},
-    {'term': 'Market Cap', 'desc': 'Kapitalisasi pasar: Harga saham x jumlah saham beredar.'},
-    {'term': 'Dividend Yield', 'desc': 'Dividen tahunan dibagi harga saham (%).'},
-    {'term': 'Debt-to-Equity', 'desc': 'Rasio utang terhadap ekuitas; ukuran leverage.'},
+    {
+      'term': 'PER (P/E)',
+      'desc':
+          'Price-to-Earnings: Rasio harga saham terhadap laba per saham. Menilai valuasi relatif.',
+    },
+    {
+      'term': 'PBV',
+      'desc': 'Price-to-Book Value: Harga pasar dibagi nilai buku per saham.',
+    },
+    {
+      'term': 'Market Cap',
+      'desc': 'Kapitalisasi pasar: Harga saham x jumlah saham beredar.',
+    },
+    {
+      'term': 'Dividend Yield',
+      'desc': 'Dividen tahunan dibagi harga saham (%).',
+    },
+    {
+      'term': 'Debt-to-Equity',
+      'desc': 'Rasio utang terhadap ekuitas; ukuran leverage.',
+    },
   ];
 
   @override
@@ -63,9 +86,22 @@ class FundamentalGlossaryScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(t['term']!, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                  Text(
+                    t['term']!,
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                   const SizedBox(height: 6),
-                  Text(t['desc']!, style: GoogleFonts.outfit(color: Colors.white70, fontSize: 12)),
+                  Text(
+                    t['desc']!,
+                    style: GoogleFonts.outfit(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
               ),
             );
@@ -81,18 +117,64 @@ class MoodysRatingsScreen extends StatelessWidget {
   const MoodysRatingsScreen({super.key});
 
   final List<Map<String, String>> _ratings = const [
-    {'rating': 'Aaa', 'desc': "Tertinggi: Risiko kredit sangat rendah. Kualitas kredit sangat kuat."},
-    {'rating': 'Aa', 'desc': "Sangat baik: Risiko kredit sangat rendah, sedikit lebih rentan terhadap kondisi ekonomi."},
-    {'rating': 'A', 'desc': "Baik: Risiko kredit rendah; sensitivitas moderat terhadap perubahan ekonomi."},
-    {'rating': 'Baa', 'desc': "Investment Grade rendah: Risiko moderat; mungkin rentan terhadap kondisi ekonomi."},
-    {'rating': 'Ba', 'desc': "Speculative: Risiko kredit material; bukan investment grade."},
-    {'rating': 'B', 'desc': "Lebih spekulatif: Risiko tinggi terhadap gagal bayar dalam kondisi buruk."},
-    {'rating': 'Caa', 'desc': "Sangat spekulatif: Risiko sangat tinggi; kemungkinan gagal bayar signifikan."},
-    {'rating': 'Ca', 'desc': "Terdekat pada gagal bayar: Sebagian besar obligasi ini sudah bermasalah."},
-    {'rating': 'C', 'desc': "Dalam kondisi gagal bayar atau sudah gagal bayar."},
-    {'rating': "Notches / Modifiers", 'desc': "Angka 1,2,3 (mis. Aa1,Aa2) menunjukkan peringkat relatif di dalam kategori."},
-    {'rating': "Short-term (P-1/P-2/P-3)", 'desc': "Penilaian likuiditas jangka pendek; P-1 terbaik, P-3 paling lemah di investment grade short-term."},
-    {'rating': "Investment Grade vs Speculative", 'desc': "Investment grade: Aaa – Baa3. Speculative (junk): Ba1 dan lebih rendah."},
+    {
+      'rating': 'Aaa',
+      'desc':
+          "Tertinggi: Risiko kredit sangat rendah. Kualitas kredit sangat kuat.",
+    },
+    {
+      'rating': 'Aa',
+      'desc':
+          "Sangat baik: Risiko kredit sangat rendah, sedikit lebih rentan terhadap kondisi ekonomi.",
+    },
+    {
+      'rating': 'A',
+      'desc':
+          "Baik: Risiko kredit rendah; sensitivitas moderat terhadap perubahan ekonomi.",
+    },
+    {
+      'rating': 'Baa',
+      'desc':
+          "Investment Grade rendah: Risiko moderat; mungkin rentan terhadap kondisi ekonomi.",
+    },
+    {
+      'rating': 'Ba',
+      'desc': "Speculative: Risiko kredit material; bukan investment grade.",
+    },
+    {
+      'rating': 'B',
+      'desc':
+          "Lebih spekulatif: Risiko tinggi terhadap gagal bayar dalam kondisi buruk.",
+    },
+    {
+      'rating': 'Caa',
+      'desc':
+          "Sangat spekulatif: Risiko sangat tinggi; kemungkinan gagal bayar signifikan.",
+    },
+    {
+      'rating': 'Ca',
+      'desc':
+          "Terdekat pada gagal bayar: Sebagian besar obligasi ini sudah bermasalah.",
+    },
+    {
+      'rating': 'C',
+      'desc': "Dalam kondisi gagal bayar atau sudah gagal bayar.",
+    },
+    {
+      'rating': "Notches / Modifiers",
+      'desc':
+          "Angka 1,2,3 (mis. Aa1,Aa2) menunjukkan peringkat relatif di dalam kategori.",
+    },
+    {
+      'rating': "Short-term (P-1/P-2/P-3)",
+      'desc':
+          "Penilaian likuiditas jangka pendek; P-1 terbaik, P-3 paling lemah di investment grade short-term.",
+    },
+    {
+      'rating': "Investment Grade vs Speculative",
+      'desc':
+          "Investment grade: Aaa – Baa3. Speculative (junk): Ba1 dan lebih rendah.",
+    },
   ];
 
   @override
@@ -127,9 +209,22 @@ class MoodysRatingsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(r['rating']!, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                  Text(
+                    r['rating']!,
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                   const SizedBox(height: 6),
-                  Text(r['desc']!, style: GoogleFonts.outfit(color: Colors.white70, fontSize: 12)),
+                  Text(
+                    r['desc']!,
+                    style: GoogleFonts.outfit(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
               ),
             );
@@ -926,9 +1021,12 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
       'type': 'Credit Rating',
       'origin': 'Credit Agency',
       'flag': '🔒',
-      'desc': 'Skala peringkat kredit internasional oleh Moody\'s Investors Service; digunakan untuk menilai risiko gagal bayar penerbit obligasi dan perusahaan.',
-      'features': 'Kategori Aaa -> C; tambahan notches 1/2/3 untuk pembagian dalam kategori. Pembagian Investment Grade vs Speculative (Junk).',
-      'strategy': 'Gunakan peringkat untuk menilai risiko kredit emiten; peringkat lebih tinggi menunjukkan kredit berkualitas dan biaya pinjaman lebih rendah.'
+      'desc':
+          'Skala peringkat kredit internasional oleh Moody\'s Investors Service; digunakan untuk menilai risiko gagal bayar penerbit obligasi dan perusahaan.',
+      'features':
+          'Kategori Aaa -> C; tambahan notches 1/2/3 untuk pembagian dalam kategori. Pembagian Investment Grade vs Speculative (Junk).',
+      'strategy':
+          'Gunakan peringkat untuk menilai risiko kredit emiten; peringkat lebih tinggi menunjukkan kredit berkualitas dan biaya pinjaman lebih rendah.',
     },
     {
       'name': 'Cornering',
@@ -1192,6 +1290,19 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
           'Seringkali tanpa analisis fundamental yang jelas, hanya menonjolkan potensi kenaikan harga (to the moon).',
       'strategy':
           'Lakukan riset mandiri (DYOR). Jangan pernah membeli saham hanya karena ajakan tanpa Trading Plan yang jelas.',
+    },
+    {
+      'name': 'Backdoor Listing',
+      'code': 'BDL',
+      'type': 'Corporate Action',
+      'origin': 'M&A Strategy',
+      'flag': '🚪',
+      'desc':
+          'Strategi perusahaan tertutup (private) untuk menjadi perusahaan terbuka (public) tanpa melalui proses IPO, biasanya dengan mengakuisisi perusahaan yang sudah listing.',
+      'features':
+          'Biasanya terjadi pada saham tidur atau perusahaan kecil yang tiba-tiba diakuisisi oleh grup besar.',
+      'strategy':
+          'Potensi keuntungan sangat besar (multibagger) jika berhasil masuk di tahap awal rumor atau pengumuman akuisisi.',
     },
   ];
 
@@ -1796,11 +1907,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
                 ],
               ),
             ),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: accentColor,
-              size: 24,
-            ),
+            Icon(Icons.chevron_right_rounded, color: accentColor, size: 24),
           ],
         ),
       ),
@@ -2496,14 +2603,19 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
                     : Colors.white10.withOpacity(0.02),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                    color: _newsScope == 'IDN'
-                        ? Colors.purpleAccent
-                        : Colors.white10),
+                  color: _newsScope == 'IDN'
+                      ? Colors.purpleAccent
+                      : Colors.white10,
+                ),
               ),
               child: Center(
-                child: Text('IDN',
-                    style: GoogleFonts.outfit(
-                        color: Colors.white, fontWeight: FontWeight.bold)),
+                child: Text(
+                  'IDN',
+                  style: GoogleFonts.outfit(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
           ),
@@ -2520,14 +2632,19 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
                     : Colors.white10.withOpacity(0.02),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                    color: _newsScope == 'Global'
-                        ? Colors.purpleAccent
-                        : Colors.white10),
+                  color: _newsScope == 'Global'
+                      ? Colors.purpleAccent
+                      : Colors.white10,
+                ),
               ),
               child: Center(
-                child: Text('Global',
-                    style: GoogleFonts.outfit(
-                        color: Colors.white, fontWeight: FontWeight.bold)),
+                child: Text(
+                  'Global',
+                  style: GoogleFonts.outfit(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
           ),
@@ -2548,7 +2665,9 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
 
       // Keep only items within the last 7 days for Global scope, otherwise keep IDN recent
       if (_newsScope == 'Global') {
-        withDates = withDates.where((e) => now.difference(e['date']).inDays <= 7).toList();
+        withDates = withDates
+            .where((e) => now.difference(e['date']).inDays <= 7)
+            .toList();
       }
 
       // Sort descending by date
@@ -2567,7 +2686,9 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
             })
             .where((n) {
               // include if contains any global keyword even if not matched earlier
-              final t = (n['title'] ?? n['news'] ?? '').toString().toLowerCase();
+              final t = (n['title'] ?? n['news'] ?? '')
+                  .toString()
+                  .toLowerCase();
               for (var k in _globalKeywords) if (t.contains(k)) return true;
               return false;
             })
@@ -2579,12 +2700,10 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
 
       // Fallback: if still empty, include recent (<=7d) items regardless of scope up to 15
       if (result.isEmpty) {
-        final fallback = _topStories
-            .where((n) {
-              final d = _extractNewsDate(n) ?? now;
-              return now.difference(d).inDays <= 7;
-            })
-            .toList();
+        final fallback = _topStories.where((n) {
+          final d = _extractNewsDate(n) ?? now;
+          return now.difference(d).inDays <= 7;
+        }).toList();
         result = fallback.take(15).toList();
       }
 
@@ -2614,13 +2733,17 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
       final lower = s.toLowerCase();
       final now = DateTime.now();
       final minMatch = RegExp(r"(\d+)\s*mins?").firstMatch(lower);
-      if (minMatch != null) return now.subtract(Duration(minutes: int.parse(minMatch.group(1)!)));
+      if (minMatch != null)
+        return now.subtract(Duration(minutes: int.parse(minMatch.group(1)!)));
       final hourMatch = RegExp(r"(\d+)\s*hours?").firstMatch(lower);
-      if (hourMatch != null) return now.subtract(Duration(hours: int.parse(hourMatch.group(1)!)));
+      if (hourMatch != null)
+        return now.subtract(Duration(hours: int.parse(hourMatch.group(1)!)));
       final jamMatch = RegExp(r"(\d+)\s*jam").firstMatch(lower);
-      if (jamMatch != null) return now.subtract(Duration(hours: int.parse(jamMatch.group(1)!)));
+      if (jamMatch != null)
+        return now.subtract(Duration(hours: int.parse(jamMatch.group(1)!)));
       final hariMatch = RegExp(r"(\d+)\s*hari").firstMatch(lower);
-      if (hariMatch != null) return now.subtract(Duration(days: int.parse(hariMatch.group(1)!)));
+      if (hariMatch != null)
+        return now.subtract(Duration(days: int.parse(hariMatch.group(1)!)));
 
       return null;
     } catch (e) {
@@ -2630,14 +2753,19 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
 
   bool _matchesScope(dynamic news) {
     if (news == null) return false;
-    final title = (news['title'] ?? news['news'] ?? '').toString().toLowerCase();
-    final source = (news['source'] ?? news['category'] ?? '').toString().toLowerCase();
+    final title = (news['title'] ?? news['news'] ?? '')
+        .toString()
+        .toLowerCase();
+    final source = (news['source'] ?? news['category'] ?? '')
+        .toString()
+        .toLowerCase();
     final url = (news['url'] ?? '').toString().toLowerCase();
 
     if (_newsScope == 'Global') {
       // Exclude obvious local sources/domains first
       for (var li in _localIndicators) {
-        if (title.contains(li) || source.contains(li) || url.contains(li)) return false;
+        if (title.contains(li) || source.contains(li) || url.contains(li))
+          return false;
       }
 
       // Prefer known global outlets or external hosts
@@ -2652,7 +2780,7 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
         'marketwatch',
         'bbc',
         'guardian',
-        'economist'
+        'economist',
       ];
 
       // If url host or source/title matches global outlets, accept
@@ -2660,7 +2788,8 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
         final uri = Uri.tryParse(url ?? '');
         final host = uri?.host?.toLowerCase() ?? '';
         for (var g in globalOutlets) {
-          if (host.contains(g) || title.contains(g) || source.contains(g)) return true;
+          if (host.contains(g) || title.contains(g) || source.contains(g))
+            return true;
         }
       } catch (e) {
         // ignore
@@ -2668,15 +2797,30 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
 
       // Finally, match by global keywords in title/source/url
       for (var k in _globalKeywords) {
-        if (title.contains(k) || source.contains(k) || url.contains(k)) return true;
+        if (title.contains(k) || source.contains(k) || url.contains(k))
+          return true;
       }
 
       return false;
     }
 
     // IDN scope: prefer Indonesian sources or .id domains
-    final idnSources = ['indonesia', 'kompas', 'kontan', 'cnbc indonesia', 'cnn indonesia', 'antaranews', 'bisnis', 'tempo', 'detik', 'tribun', '.id'];
-    for (var s in idnSources) if (title.contains(s) || source.contains(s) || url.contains(s)) return true;
+    final idnSources = [
+      'indonesia',
+      'kompas',
+      'kontan',
+      'cnbc indonesia',
+      'cnn indonesia',
+      'antaranews',
+      'bisnis',
+      'tempo',
+      'detik',
+      'tribun',
+      '.id',
+    ];
+    for (var s in idnSources)
+      if (title.contains(s) || source.contains(s) || url.contains(s))
+        return true;
 
     return false;
   }
@@ -2828,15 +2972,15 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
     );
   }
 
-  Widget _buildNewsListItem(
-    dynamic news,
-  ) {
+  Widget _buildNewsListItem(dynamic news) {
     final title = (news['title'] ?? news['news'] ?? '').toString();
     final source = (news['source'] ?? news['category'] ?? 'Market').toString();
     final imageUrl = (news['imageUrl'] ?? news['image'])?.toString();
     final url = (news['url'] ?? '').toString();
     final pubDate = _extractNewsDate(news);
-    final dateLabel = pubDate != null ? DateFormat('yyyy-MM-dd').format(pubDate) : _formatTime(news['time']);
+    final dateLabel = pubDate != null
+        ? DateFormat('yyyy-MM-dd').format(pubDate)
+        : _formatTime(news['time']);
 
     return GestureDetector(
       onTap: () async {

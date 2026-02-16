@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
+
 import 'analysis_screen.dart'; // To navigate to details
+import 'stocks_screen.dart'; // To browse and add stocks
+import '../widgets/stock_card.dart'; // Widget Custom untuk Kartu Saham
 
 class WatchlistScreen extends StatefulWidget {
   const WatchlistScreen({super.key});
@@ -10,76 +12,19 @@ class WatchlistScreen extends StatefulWidget {
   State<WatchlistScreen> createState() => _WatchlistScreenState();
 }
 
-class _WatchlistScreenState extends State<WatchlistScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  // Mock Data Structure
-  // Map<CategoryName, List<StockData>>
+class _WatchlistScreenState extends State<WatchlistScreen> {
+  // Data Structure: Map<WatchlistName, List<StockData>>
+  // Initialized with one empty default watchlist
   final Map<String, List<Map<String, dynamic>>> _watchlists = {
-    'My Favorites': [
-      {
-        'code': 'BBCA',
-        'name': 'Bank Central Asia',
-        'price': 9850,
-        'change': 2.3,
-        'is_reverse_merger': false,
-      },
-      {
-        'code': 'BBRI',
-        'name': 'Bank Rakyat Indonesia',
-        'price': 5400,
-        'change': -1.2,
-        'is_reverse_merger': false,
-      },
-    ],
-    'Tech Growth': [
-      {
-        'code': 'GOTO',
-        'name': 'GoTo Gojek Tokopedia',
-        'price': 82,
-        'change': 7.8,
-        'is_reverse_merger': false,
-      },
-      {
-        'code': 'BUKA',
-        'name': 'Bukalapak',
-        'price': 120,
-        'change': 0.5,
-        'is_reverse_merger': false,
-      },
-    ],
-    'Dividend': [
-      {
-        'code': 'ITMG',
-        'name': 'Indo Tambangraya',
-        'price': 25000,
-        'change': 1.5,
-        'is_reverse_merger': false,
-      },
-      {
-        'code': 'ADRO',
-        'name': 'Adaro Energy',
-        'price': 2450,
-        'change': 4.1,
-        'is_reverse_merger': false,
-      },
-    ],
+    'My Watchlist': [],
   };
+
+  late String _selectedWatchlist;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(
-      length: _watchlists.keys.length,
-      vsync: this,
-    );
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+    _selectedWatchlist = _watchlists.keys.first;
   }
 
   @override
@@ -90,40 +35,54 @@ class _WatchlistScreenState extends State<WatchlistScreen>
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(
-          'Watchlist',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
-        ),
+        title: _buildWatchlistDropdown(),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // TODO: Implement search to add stock
-              _showAddStockDialog();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'New Watchlist',
+            icon: const Icon(Icons.add_circle_outline),
+            tooltip: 'Create New Watchlist',
             onPressed: _showCreateCategoryDialog,
           ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          dividerColor: Colors.transparent,
-          indicatorColor: const Color(0xFFC800FF),
-          indicatorSize: TabBarIndicatorSize.label,
-          labelPadding: EdgeInsets.zero,
-          labelStyle: GoogleFonts.outfit(
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              if (value == 'delete') {
+                _showDeleteWatchlistDialog();
+              } else if (value == 'rename') {
+                _showRenameWatchlistDialog();
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'rename',
+                child: Text('Rename Watchlist'),
+              ),
+              const PopupMenuItem<String>(
+                value: 'delete',
+                child: Text(
+                  'Delete Watchlist',
+                  style: TextStyle(color: Colors.redAccent),
+                ),
+              ),
+            ],
           ),
-          unselectedLabelStyle: GoogleFonts.outfit(fontSize: 12),
-          tabs: _watchlists.keys.map((cat) => Tab(text: cat)).toList(),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _navigateToStocksScreen,
+        backgroundColor: const Color(0xFFC800FF),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: Text(
+          'Add Stock',
+          style: GoogleFonts.outfit(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -133,13 +92,67 @@ class _WatchlistScreenState extends State<WatchlistScreen>
           ),
         ),
         child: SafeArea(
-          child: TabBarView(
-            controller: _tabController,
-            children: _watchlists.keys.map((cat) {
-              return _buildWatchlistContent(cat);
-            }).toList(),
+          child: Column(
+            children: [
+              _buildHeaderStats(), // Optional: Summary stats like Stockbit
+              Expanded(child: _buildWatchlistContent(_selectedWatchlist)),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildWatchlistDropdown() {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        canvasColor: const Color(0xFF1E1E1E), // Dropdown background
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _watchlists.containsKey(_selectedWatchlist)
+              ? _selectedWatchlist
+              : null,
+          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+          style: GoogleFonts.outfit(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            color: Colors.white,
+          ),
+          isExpanded: false,
+          items: _watchlists.keys.map((String value) {
+            return DropdownMenuItem<String>(value: value, child: Text(value));
+          }).toList(),
+          onChanged: (String? newValue) {
+            if (newValue != null) {
+              setState(() {
+                _selectedWatchlist = newValue;
+              });
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderStats() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Colors.white10)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Symbol',
+            style: GoogleFonts.outfit(color: Colors.white54, fontSize: 12),
+          ),
+          Text(
+            'Last Price / Change',
+            style: GoogleFonts.outfit(color: Colors.white54, fontSize: 12),
+          ),
+        ],
       ),
     );
   }
@@ -148,140 +161,63 @@ class _WatchlistScreenState extends State<WatchlistScreen>
     final stocks = _watchlists[category] ?? [];
 
     if (stocks.isEmpty) {
-      return Expanded(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.list_alt,
-                size: 64,
-                color: Colors.white.withValues(alpha: 0.2),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'This watchlist is empty',
-                style: GoogleFonts.outfit(color: Colors.white54),
-              ),
-              TextButton(
-                onPressed: _showAddStockDialog,
-                child: const Text('Add Stock'),
-              ),
-            ],
-          ),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.format_list_bulleted,
+              size: 64,
+              color: Colors.white.withValues(alpha: 0.2),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Watchlist is empty',
+              style: GoogleFonts.outfit(color: Colors.white54),
+            ),
+          ],
         ),
       );
     }
 
-    return Expanded(
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: stocks.length,
-        itemBuilder: (context, index) {
-          final stock = stocks[index];
-          return _buildStockItem(stock);
-        },
-      ),
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: stocks.length,
+      itemBuilder: (context, index) {
+        final stock = stocks[index];
+        return _buildStockItem(stock);
+      },
+    );
+  }
+
+  void _navigateToStocksScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const StocksScreen()),
     );
   }
 
   Widget _buildStockItem(Map<String, dynamic> stock) {
-    final price = stock['price'] as num;
-    final change = stock['change'] as num;
-    final isPositive = change >= 0;
-    final color = isPositive ? Colors.greenAccent : Colors.redAccent;
-    final currencyFmt = NumberFormat.simpleCurrency(
-      locale: 'id_ID',
-      name: 'Rp ',
-      decimalDigits: 0,
-    );
-
-    return GestureDetector(
+    // Menggunakan Widget StockCard yang Reusable (OOP & Clean Code)
+    return StockCard.fromMap(
+      stock,
       onTap: () {
-        // Navigate to details (reusing AnalysisScreen with minimal data)
+        // Navigasi ke detail (menggunakan AnalysisScreen dengan data minimal)
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => AnalysisScreen(
               stockData: {
                 ...stock,
-                'current_price': price,
-                'is_reverse_merger': false, // Mock
-                'analyst_score': 85, // Mock
-                'news_multibagger': 'Trending Up',
-                'name': stock['name'],
+                'current_price': (stock['price'] as num?)?.toDouble() ?? 0.0,
+                'analyst_score': 85, // Mock data
+                'news_multibagger': 'Trending Up', // Mock data
               },
             ),
           ),
         );
       },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  stock['code'],
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(
-                  stock['name'],
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    color: Colors.white54,
-                  ),
-                ),
-              ],
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  currencyFmt.format(price),
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.white,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    '${isPositive ? '+' : ''}$change%',
-                    style: GoogleFonts.outfit(
-                      color: color,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
       onLongPress: () {
-        // Option to delete
         _showRemoveStockDialog(stock);
       },
     );
@@ -301,12 +237,16 @@ class _WatchlistScreenState extends State<WatchlistScreen>
           controller: controller,
           style: const TextStyle(color: Colors.white),
           decoration: const InputDecoration(
-            hintText: 'e.g., gorengan',
+            hintText: 'Watchlist Name',
             hintStyle: TextStyle(color: Colors.white30),
             enabledBorder: UnderlineInputBorder(
               borderSide: BorderSide(color: Colors.white24),
             ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFFC800FF)),
+            ),
           ),
+          autofocus: true,
         ),
         actions: [
           TextButton(
@@ -315,18 +255,21 @@ class _WatchlistScreenState extends State<WatchlistScreen>
           ),
           TextButton(
             onPressed: () {
-              if (controller.text.isNotEmpty) {
-                setState(() {
-                  _watchlists[controller.text] = [];
-                  // Re-initialize tab controller with new length
-                  final oldIndex = _tabController.index;
-                  _tabController = TabController(
-                    length: _watchlists.keys.length,
-                    vsync: this,
+              final newName = controller.text.trim();
+              if (newName.isNotEmpty) {
+                if (_watchlists.containsKey(newName)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Watchlist name already exists'),
+                    ),
                   );
-                  _tabController.index = oldIndex;
-                });
-                Navigator.pop(context);
+                } else {
+                  setState(() {
+                    _watchlists[newName] = [];
+                    _selectedWatchlist = newName;
+                  });
+                  Navigator.pop(context);
+                }
               }
             },
             child: const Text(
@@ -339,29 +282,29 @@ class _WatchlistScreenState extends State<WatchlistScreen>
     );
   }
 
-  void _showAddStockDialog() {
-    // Mock stock search
-    final controller = TextEditingController();
+  void _showRenameWatchlistDialog() {
+    final controller = TextEditingController(text: _selectedWatchlist);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: Text(
-          'Add to ${_watchlists.keys.elementAt(_tabController.index)}',
-          style: const TextStyle(color: Colors.white),
+        title: const Text(
+          'Rename Watchlist',
+          style: TextStyle(color: Colors.white),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: controller,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                hintText: 'Stock Code (e.g. TLKM)',
-                hintStyle: TextStyle(color: Colors.white30),
-              ),
+        content: TextField(
+          controller: controller,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'New Name',
+            hintStyle: TextStyle(color: Colors.white30),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.white24),
             ),
-          ],
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFFC800FF)),
+            ),
+          ),
         ),
         actions: [
           TextButton(
@@ -370,24 +313,67 @@ class _WatchlistScreenState extends State<WatchlistScreen>
           ),
           TextButton(
             onPressed: () {
-              if (controller.text.isNotEmpty) {
-                // Mock adding stock
-                setState(() {
-                  final cat = _watchlists.keys.elementAt(_tabController.index);
-                  _watchlists[cat]?.add({
-                    'code': controller.text.toUpperCase(),
-                    'name': 'Unknown Company', // Mock
-                    'price': 1000, // Mock
-                    'change': 0.0,
-                    'is_reverse_merger': false,
+              final newName = controller.text.trim();
+              if (newName.isNotEmpty && newName != _selectedWatchlist) {
+                if (_watchlists.containsKey(newName)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Watchlist name already exists'),
+                    ),
+                  );
+                } else {
+                  setState(() {
+                    var stocks = _watchlists[_selectedWatchlist]!;
+                    _watchlists.remove(_selectedWatchlist);
+                    _watchlists[newName] = stocks;
+                    _selectedWatchlist = newName;
                   });
-                });
-                Navigator.pop(context);
+                  Navigator.pop(context);
+                }
               }
             },
             child: const Text(
-              'Add',
+              'Save',
               style: TextStyle(color: Color(0xFFC800FF)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteWatchlistDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: const Text(
+          'Delete Watchlist',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Are you sure you want to delete "$_selectedWatchlist"?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _watchlists.remove(_selectedWatchlist);
+                if (_watchlists.isEmpty) {
+                  _watchlists['My Watchlist'] = [];
+                }
+                _selectedWatchlist = _watchlists.keys.first;
+              });
+              Navigator.pop(context);
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.redAccent),
             ),
           ),
         ],
@@ -405,7 +391,7 @@ class _WatchlistScreenState extends State<WatchlistScreen>
           style: TextStyle(color: Colors.white),
         ),
         content: Text(
-          'Remove ${stock['code']} from ${_watchlists.keys.elementAt(_tabController.index)}?',
+          'Remove ${stock['code']} from $_selectedWatchlist?',
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -416,8 +402,7 @@ class _WatchlistScreenState extends State<WatchlistScreen>
           TextButton(
             onPressed: () {
               setState(() {
-                final cat = _watchlists.keys.elementAt(_tabController.index);
-                _watchlists[cat]?.remove(stock);
+                _watchlists[_selectedWatchlist]?.remove(stock);
               });
               Navigator.pop(context);
             },

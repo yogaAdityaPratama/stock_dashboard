@@ -123,7 +123,7 @@ class _MainContainerState extends State<MainContainer> {
                   label: 'Portfolio',
                 ),
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.psychology_rounded),
+                  icon: Icon(Icons.auto_awesome_rounded),
                   label: 'AI Screen',
                 ),
                 BottomNavigationBarItem(

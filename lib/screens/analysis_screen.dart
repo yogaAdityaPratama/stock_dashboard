@@ -1563,6 +1563,8 @@ class _SmartMoneyFlowSection extends StatelessWidget {
         bullishPercentage: 50,
         bearishPercentage: 50,
         sentiment: 'NEUTRAL',
+        explanation: 'Neutral market with balanced forces',
+        factors: {},
       );
     }
 
@@ -1601,12 +1603,30 @@ class _SmartMoneyFlowSection extends StatelessWidget {
         isNeutral = true;
       }
 
+      // Cap percentages at 100%
+      final cappedBullishPct = bullishPct.clamp(0.0, 100.0).round();
+      final cappedBearishPct = bearishPct.clamp(0.0, 100.0).round();
+
+      // Parse quant warnings from backend (NEW)
+      final List<Map<String, dynamic>> quantWarnings = [];
+      if (dynamicAnalysis!['quant_warnings'] != null) {
+        final rawWarnings = dynamicAnalysis!['quant_warnings'] as List<dynamic>;
+        for (var warning in rawWarnings) {
+          if (warning is Map<String, dynamic>) {
+            quantWarnings.add(warning);
+          }
+        }
+      }
+
       return _FlowRecommendation(
         isBullish: isBullish,
         isNeutral: isNeutral,
-        bullishPercentage: bullishPct.round(),
-        bearishPercentage: bearishPct.round(),
+        bullishPercentage: cappedBullishPct,
+        bearishPercentage: cappedBearishPct,
         sentiment: displaySentiment,
+        explanation: sentimentDetail['explanation']?.toString() ?? '',
+        factors: sentimentDetail['factors'] as Map<String, dynamic>? ?? {},
+        quantWarnings: quantWarnings, // NEW
       );
     }
 
@@ -1684,6 +1704,12 @@ class _SmartMoneyFlowSection extends StatelessWidget {
       bullishPercentage: bullishPct,
       bearishPercentage: bearishPct,
       sentiment: sentiment,
+      explanation: 'Based on local flow analysis',
+      factors: {
+        'Smart Money': groupsStatus,
+        'Whale/Market Maker': whaleStatus,
+        'Retail': retailStatus,
+      },
     );
   }
 
@@ -1752,7 +1778,7 @@ class _SmartMoneyFlowSection extends StatelessWidget {
           const SizedBox(height: 12),
 
           // Rekomendasi Bullish/Bearish (seperti gambar 1)
-          _buildRecommendationPanel(recommendation),
+          _buildRecommendationPanel(context, recommendation),
 
           const SizedBox(height: 12),
 
@@ -1793,7 +1819,10 @@ class _SmartMoneyFlowSection extends StatelessWidget {
   }
 
   /// Panel rekomendasi profesional dengan visualisasi Bullish/Bearish
-  Widget _buildRecommendationPanel(_FlowRecommendation rec) {
+  Widget _buildRecommendationPanel(
+    BuildContext context,
+    _FlowRecommendation rec,
+  ) {
     Color primaryColor;
     if (rec.isNeutral) {
       primaryColor = Colors.grey; // Atau Yellow
@@ -1801,80 +1830,495 @@ class _SmartMoneyFlowSection extends StatelessWidget {
       primaryColor = rec.isBullish ? Colors.greenAccent : Colors.redAccent;
     }
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        children: [
-          // Header Sentiment & Status
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'SENTIMENT',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
+    return GestureDetector(
+      onTap: () => _showSentimentExplanation(context, rec),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: primaryColor.withValues(alpha: 0.5),
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: primaryColor.withValues(alpha: 0.2),
+              blurRadius: 12,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Header Sentiment & Status
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'SENTIMENT',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: const Duration(seconds: 2),
+                      builder: (context, value, child) {
+                        return Opacity(
+                          opacity: 0.5 + (value * 0.5),
+                          child: Icon(
+                            Icons.auto_awesome,
+                            color: primaryColor,
+                            size: 14,
+                          ),
+                        );
+                      },
+                      onEnd: () {
+                        // Animation completes without action
+                      },
+                    ),
+                  ],
                 ),
-              ),
-              Row(
-                children: [
-                  Icon(
-                    rec.isNeutral
-                        ? Icons.remove_circle_outline
-                        : (rec.isBullish
-                              ? Icons.trending_up
-                              : Icons.trending_down),
-                    color: primaryColor,
-                    size: 14,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '${rec.sentiment} ${rec.isNeutral ? '' : (rec.isBullish ? '${rec.bullishPercentage}%' : '${rec.bearishPercentage}%')}',
-                    style: TextStyle(
+                Row(
+                  children: [
+                    Icon(
+                      rec.isNeutral
+                          ? Icons.remove_circle_outline
+                          : (rec.isBullish
+                                ? Icons.trending_up
+                                : Icons.trending_down),
                       color: primaryColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
+                      size: 14,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${rec.sentiment} ${rec.isNeutral ? '' : (rec.isBullish ? '${rec.bullishPercentage}%' : '${rec.bearishPercentage}%')}',
+                      style: TextStyle(
+                        color: primaryColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Progress Bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: Row(
+                children: [
+                  // Bullish / Left Bar
+                  Expanded(
+                    flex: rec.bullishPercentage,
+                    child: Container(
+                      height: 8,
+                      color: rec.isNeutral
+                          ? Colors.grey.withValues(alpha: 0.5)
+                          : Colors.greenAccent,
+                    ),
+                  ),
+                  // Bearish / Right Bar
+                  Expanded(
+                    flex: rec.bearishPercentage,
+                    child: Container(
+                      height: 8,
+                      color: rec.isNeutral
+                          ? Colors.grey.withValues(alpha: 0.3)
+                          : Colors.redAccent,
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
+            ),
 
-          // Progress Bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: Row(
+            const SizedBox(height: 8),
+
+            // Tap hint
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Bullish / Left Bar
-                Expanded(
-                  flex: rec.bullishPercentage,
-                  child: Container(
-                    height: 8,
-                    color: rec.isNeutral
-                        ? Colors.grey.withValues(alpha: 0.5)
-                        : Colors.greenAccent,
-                  ),
-                ),
-                // Bearish / Right Bar
-                Expanded(
-                  flex: rec.bearishPercentage,
-                  child: Container(
-                    height: 8,
-                    color: rec.isNeutral
-                        ? Colors.grey.withValues(alpha: 0.3)
-                        : Colors.redAccent,
+                Icon(Icons.touch_app_rounded, size: 12, color: Colors.white38),
+                const SizedBox(width: 4),
+                Text(
+                  'Tap untuk lihat analisis lengkap',
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 9,
+                    fontStyle: FontStyle.italic,
                   ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Show detailed sentiment explanation popup
+  void _showSentimentExplanation(
+    BuildContext context,
+    _FlowRecommendation rec,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(
+              rec.isNeutral
+                  ? Icons.remove_circle_outline
+                  : (rec.isBullish ? Icons.trending_up : Icons.trending_down),
+              color: rec.isNeutral
+                  ? Colors.grey
+                  : (rec.isBullish ? Colors.greenAccent : Colors.redAccent),
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Analisis ${rec.sentiment}',
+                style: GoogleFonts.outfit(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Percentage Display
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color:
+                            (rec.isBullish
+                                    ? Colors.greenAccent
+                                    : Colors.redAccent)
+                                .withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color:
+                              (rec.isBullish
+                                      ? Colors.greenAccent
+                                      : Colors.redAccent)
+                                  .withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Optimis',
+                                style: GoogleFonts.outfit(
+                                  color: Colors.white60,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${rec.bullishPercentage}%',
+                                style: GoogleFonts.robotoMono(
+                                  color: Colors.greenAccent,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            width: 1,
+                            height: 40,
+                            color: Colors.white24,
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                'Pesimis',
+                                style: GoogleFonts.outfit(
+                                  color: Colors.white60,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${rec.bearishPercentage}%',
+                                style: GoogleFonts.robotoMono(
+                                  color: Colors.redAccent,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Explanation
+                    if (rec.explanation.isNotEmpty) ...[
+                      Text(
+                        'Analisis',
+                        style: GoogleFonts.outfit(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        rec.explanation,
+                        style: GoogleFonts.outfit(
+                          color: Colors.white70,
+                          fontSize: 13,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    // Factors Breakdown
+                    if (rec.factors.isNotEmpty) ...[
+                      Text(
+                        'Faktor Kunci',
+                        style: GoogleFonts.outfit(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ...rec.factors.entries.map(
+                        (entry) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                margin: const EdgeInsets.only(top: 6),
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFC800FF),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: RichText(
+                                  text: TextSpan(
+                                    style: GoogleFonts.outfit(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                    ),
+                                    children: [
+                                      TextSpan(
+                                        text: '${entry.key}: ',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      TextSpan(text: '${entry.value}'),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+
+                    // Quant Warnings Section (NEW)
+                    if (rec.quantWarnings.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF6B35).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: const Color(
+                              0xFFFF6B35,
+                            ).withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: Color(0xFFFF6B35),
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'PERINGATAN QUANT',
+                                  style: GoogleFonts.outfit(
+                                    color: const Color(0xFFFF6B35),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            ...rec.quantWarnings.map((warning) {
+                              Color warningColor;
+                              switch (warning['type']) {
+                                case 'DANGER':
+                                  warningColor = Colors.redAccent;
+                                  break;
+                                case 'WARNING':
+                                  warningColor = Colors.orangeAccent;
+                                  break;
+                                case 'SAFE':
+                                  warningColor = Colors.greenAccent;
+                                  break;
+                                case 'OPPORTUNITY':
+                                  warningColor = Colors.cyanAccent;
+                                  break;
+                                case 'MEGA_OPPORTUNITY':
+                                  warningColor = const Color(
+                                    0xFFFFD700,
+                                  ); // Gold
+                                  break;
+                                default:
+                                  warningColor = Colors.white70;
+                              }
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: warningColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: warningColor.withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          warning['icon'] ?? '⚠️',
+                                          style: const TextStyle(fontSize: 16),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            warning['message'] ?? '',
+                                            style: GoogleFonts.outfit(
+                                              color: warningColor,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (warning['detail'] != null &&
+                                        warning['detail']
+                                            .toString()
+                                            .isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        warning['detail'],
+                                        style: GoogleFonts.outfit(
+                                          color: Colors.white60,
+                                          fontSize: 10,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Methodology Note with DYOR
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.info_outline,
+                    color: Colors.white38,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Sentimen dihitung menggunakan model Machine Learning dengan analisis arus broker (brokerage flow), indikator teknikal, dan dinamika pasar. Persentase mewakili tingkat kepercayaan (maks 100%). DYOR: Ini perhitungan Machine Learning yang bisa salah. Selalu lakukan riset sendiri.',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white38,
+                        fontSize: 10,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Tutup',
+              style: GoogleFonts.outfit(
+                color: const Color(0xFFC800FF),
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -1925,6 +2369,9 @@ class _FlowRecommendation {
   final int bullishPercentage;
   final int bearishPercentage;
   final String sentiment;
+  final String explanation;
+  final Map<String, dynamic> factors;
+  final List<Map<String, dynamic>> quantWarnings; // NEW
 
   _FlowRecommendation({
     required this.isBullish,
@@ -1932,6 +2379,9 @@ class _FlowRecommendation {
     required this.bullishPercentage,
     required this.bearishPercentage,
     required this.sentiment,
+    this.explanation = '',
+    this.factors = const {},
+    this.quantWarnings = const [], // NEW
   });
 }
 
