@@ -48,6 +48,27 @@ class ApiService {
     }
   }
 
+  /// Memanggil endpoint Advanced Forecast (LSTM + BlackRock)
+  Future<Map<String, dynamic>> getAdvancedForecast(String stockCode) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/forecast_advanced'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'code': stockCode}),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        debugPrint("Advanced Forecast Failed: ${response.statusCode}");
+        return {};
+      }
+    } catch (e) {
+      debugPrint('Advanced Forecast Connection Error: $e');
+      return {};
+    }
+  }
+
   Future<Map<String, dynamic>> getSentiment(String stockCode) async {
     try {
       final response = await http.post(

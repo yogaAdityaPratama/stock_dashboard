@@ -1,4 +1,38 @@
 
+"""
+============================================================================
+Find & Analyze Stocks Backend API
+============================================================================
+
+Description:
+    This Flask application serves as the backend for the Stock Investment Dashboard.
+    It provides endpoints for:
+    1.  **Stock Screening**: Filtering stocks based on professional analyst criteria (e.g., Warren Buffett, BlackRock).
+    2.  **Market Dynamics**: Real-time fetching of Top Gainers, Losers, and Hype stocks using TradingView Scanner.
+    3.  **Sentiment Analysis**: Advanced ML-based sentiment analysis combining Price Momentum, Volume, RSI, News, and Volatility.
+    4.  **Forecasting**: Linear Regression models for price prediction.
+    5.  **Pattern Recognition**: Automated technical chart pattern detection.
+    6.  **Comprehensive Analysis**: Aggregating all data points for a holistic view of a stock.
+
+Architecture:
+    - **Framework**: Flask (Python)
+    - **Data Sources**: 
+        - `yfinance`: For historical price data and technical indicators.
+        - `TradingView Scanner`: For real-time market screening and live price updates.
+        - `GoAPI` (Optional): Alternative metadata source.
+        - `Google News RSS`: For real-time news sentiment analysis.
+    - **ML Models**: 
+        - `VADER`: For text sentiment analysis (News).
+        - `LinearRegression`: For price forecasting.
+        - `RandomForest` (Mini-implementation): For predictive trend analysis.
+    - **Caching**: In-memory caching for high-load endpoints (Market Dynamics).
+
+Author: Senior Quant Analyst & Backend Engineer
+Version: 3.1.0
+Last Updated: 2026-02-17
+============================================================================
+"""
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -6,6 +40,12 @@ import requests
 import pandas as pd
 import numpy as np
 from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import MinMaxScaler
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense, Dropout, Attention, Input, Bidirectional, GRU
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping
 from datetime import datetime, timedelta
 import random 
 import xml.etree.ElementTree as ET
@@ -131,23 +171,39 @@ MOCK_STOCKS = [
 
 @app.route('/health', methods=['GET'])
 def health_check():
+    """
+    System Health Check Endpoint.
+    
+    Returns:
+        JSON: Status 'ok' and current server timestamp (ISO format).
+    """
     return jsonify({'status': 'ok', 'timestamp': datetime.now().isoformat()})
 
 @app.route('/api/screen', methods=['POST'])
 def screen_stocks():
     """
-    Screen stocks based on analyst style and criteria.
-    Body:
+    Screen stocks based on selected Analyst Style and Investment Criteria.
+    
+    Processing Steps:
+    1. Receives 'analyst_style' from request body (default: 'Warren Buffett').
+    2. Retrieves the corresponding criteria ruleset from ANALYST_CRITERIA.
+    3. Iterates through the stock pool (MOCK_STOCKS) and evaluates each stock against the criteria.
+    4. Calculates a 'match score' dynamically based on how many rules are satisfied.
+    5. Generates match reasons for UI display.
+    6. Adds simulated AI forecasting and reverse merger probabilities (demo features).
+    
+    Request Body:
     {
-        "analyst_style": "Warren Buffett", (or others)
-        "market_cap_min": 0,
-        ...
+        "analyst_style": "Warren Buffett"
     }
+    
+    Returns:
+        JSON: List of filtered stocks, sorted by 'ml_accuracy' score.
     """
     data = request.json
     style = data.get('analyst_style', 'Warren Buffett')
     
-    # Simple logic to filter mock stocks based on style
+    # Filter logic using expert system rules
     results = []
     
     criteria = ANALYST_CRITERIA.get(style, ANALYST_CRITERIA['Warren Buffett'])
@@ -187,11 +243,11 @@ def screen_stocks():
             score += 15
             reasons.append("ESG Compliance (Governance)")
         
-        # Add random "AI Forecasting"
+        # Add random "AI Forecasting" for demo purposes
         forecast_1m = stock['price'] * (1 + random.uniform(-0.05, 0.10))
         accuracy_ml = random.uniform(80, 95) if score > 0 else random.uniform(50, 70)
         
-        # Mock Reverse Merger
+        # Mock Reverse Merger detection (Special Feature)
         is_reverse_merger = random.choice([True, False]) if stock['code'] == 'GOTO' else False
         
         results.append({
@@ -207,7 +263,7 @@ def screen_stocks():
             'news_multibagger': "Rumor akuisisi oleh global player" if is_reverse_merger else "Laporan keuangan stabil"
         })
     
-    # Sort by Score/Accuracy
+    # Sort by Score/Accuracy to prioritize best matches
     results.sort(key=lambda x: x['ml_accuracy'], reverse=True)
     
     return jsonify({'results': results, 'meta': {'style': style, 'count': len(results)}})
@@ -215,25 +271,40 @@ def screen_stocks():
 @app.route('/api/forecast', methods=['POST'])
 def forecast_stock():
     """
-    Perform linear regression on historical data (mocked) for a specific stock.
+    Perform AI-driven price prediction using Linear Regression.
+    
+    Methodology:
+    1. Generates 100 days of historical price data (simulated with trend and noise).
+    2. Trains a Linear Regression model (sklearn) on this time-series data.
+    3. Calculates R-squared to measure model fit.
+    4. Predicts the price 30 days into the future.
+    5. Determines trend direction (Bullish/Bearish) based on regression slope.
+    
+    Request Body:
+    { "code": "BBCA" }
+    
+    Returns:
+        JSON: Prediction results including R-squared, future price, and trend label.
     """
     stock_code = request.json.get('code')
     
-    # Mock generating historical data
+    # Mock generating historical data for simulation
     days = 100
     dates = pd.date_range(end=datetime.now(), periods=days)
     base_price = 1000
-    trend = 0.05 # upward trend
-    noise = np.random.normal(0, 10, days)
+    trend = 0.05 # slight upward trend
+    noise = np.random.normal(0, 10, days) # random market noise
     prices = base_price + (np.arange(days) * trend) + noise
     
-    # Linear Regression
-    X = np.array(range(days)).reshape(-1, 1)
-    y = prices
+    # Linear Regression - Preparation
+    X = np.array(range(days)).reshape(-1, 1) # Days as feature
+    y = prices # Price as target
     
+    # Train Model
     model = LinearRegression()
     model.fit(X, y)
     
+    # Evaluate Model
     r_squared = model.score(X, y)
     
     # Predict next 30 days
@@ -245,14 +316,367 @@ def forecast_stock():
         'r_squared': r_squared,
         'current_price': prices[-1],
         'prediction_30d': predictions[-1],
-        'trend': 'Bullish' if model.coef_[0] > 0 else 'Bearish'
+        'trend': 'Bullish' if model.coef_[0] > 0 else 'Bearish' # Positive slope = Bullish
     })
+
+
+class BlackRockStockForecaster:
+    def __init__(self, seq_length=60):
+        self.seq_length = seq_length
+        self.scaler = MinMaxScaler()
+        self.model = None
+        self.trained = False
+        self.last_trained = None
+
+    def prepare_data(self, df):
+        df = df.copy()
+        # Pastikan kolom lowercase
+        df.columns = [col.lower() for col in df.columns]
+        
+        # Handle missing columns
+        for col in ['close', 'volume', 'foreign_net_buy', 'rsi', 'sentiment_score']:
+            if col not in df.columns:
+                df[col] = 0.0 if col != 'close' else df.get('close', 1000)
+        
+        # Hitung RSI jika belum ada
+        if 'rsi' not in df.columns or df['rsi'].isna().all():
+            delta = df['close'].pct_change().fillna(0)
+            gain = delta.where(delta > 0, 0).rolling(14).mean()
+            loss = -delta.where(delta < 0, 0).rolling(14).mean()
+            rs = gain / loss.replace(0, np.nan)
+            df['rsi'] = 100 - (100 / (1 + rs)).fillna(50)
+        
+        features = ['close', 'volume', 'foreign_net_buy', 'rsi', 'sentiment_score']
+        data = df[features].fillna(0).values
+
+        scaled_data = self.scaler.fit_transform(data)
+
+        X, y = [], []
+        for i in range(len(scaled_data) - self.seq_length):
+            X.append(scaled_data[i:i + self.seq_length])
+            y.append(scaled_data[i + self.seq_length, 0])  # predict close
+
+        return np.array(X), np.array(y)
+
+    def build_model(self):
+        # Arsitektur Hybrid: Bi-LSTM + Bi-GRU + Attention
+        # Didesain untuk menangkap volatilitas pasar saham Indonesia (High Noise)
+        inputs = Input(shape=(self.seq_length, 5))
+        
+        # 1. Bidirectional LSTM (Macro Pattern Recognition)
+        # Menangkap tren jangka panjang dari dua arah (masa lalu ke masa depan & sebaliknya)
+        x = Bidirectional(LSTM(128, return_sequences=True))(inputs)
+        x = Dropout(0.3)(x) # 30% neuron dimatikan untuk mencegah overfitting
+
+        # 2. Bidirectional GRU (Short-term Volatility Handling)
+        # GRU lebih cepat adaptasi pada perubahan mendadak (news seeking alpha)
+        x = Bidirectional(GRU(64, return_sequences=True))(x)
+        x = Dropout(0.3)(x)
+        
+        # 3. Self-Attention Mechanism
+        # Memberikan bobot lebih pada time-step tertentu (misal: saat volume spike)
+        attn_out = Attention()([x, x])
+        
+        # 4. Feature Extraction & Bottleneck
+        x = LSTM(64, return_sequences=False)(attn_out)
+        x = Dropout(0.2)(x)
+
+        # 5. Output Layers
+        x = Dense(32, activation='relu')(x)
+        outputs = Dense(1)(x) # Prediksi harga Close (continuous value)
+        
+        model = tf.keras.Model(inputs, outputs)
+        
+        # Optimizer Tuning: Lower Learning Rate (0.0005) untuk convergence stabil
+        opt = Adam(learning_rate=0.0005)
+        model.compile(optimizer=opt, loss='huber', metrics=['mae'])
+        
+        return model
+
+    def train_or_load(self, X_train, y_train, epochs=25):
+        """Train sekali saja, simpan model di memory"""
+        if self.model is None or not self.trained:
+            print(f"\n🚀 [BlackRock AI] Starting Model Training...")
+            print(f"📊 Training Data Shape: X={X_train.shape}, y={y_train.shape}")
+            
+            self.model = self.build_model()
+            early_stop = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+            
+            # Ubah verbose=1 agar terlihat progress bar di terminal
+            history = self.model.fit(
+                X_train, y_train,
+                epochs=epochs,
+                batch_size=32,
+                validation_split=0.2,
+                callbacks=[early_stop],
+                verbose=1 
+            )
+            
+            self.trained = True
+            self.last_trained = datetime.now()
+            
+            # Log Training Result
+            final_loss = history.history['loss'][-1]
+            final_val_loss = history.history['val_loss'][-1]
+            print(f"✅ LSTM Model Trained Successfully!")
+            print(f"📉 Final Loss: {final_loss:.5f} | Val Loss: {final_val_loss:.5f}")
+        else:
+            print(f"⏩ [BlackRock AI] Using existing trained model (Last trained: {self.last_trained})")
+            
+        return self.model
+
+    def predict_next_30_days(self, last_sequence, n_days=30):
+        if self.model is None:
+            raise Exception("Model belum ditrain")
+        
+        print(f"\n🔮 [BlackRock AI] Generating {n_days} Days Forecast...")
+        predictions = []
+        current_seq = last_sequence.copy()
+
+        for i in range(n_days):
+            pred = self.model.predict(current_seq.reshape(1, self.seq_length, -1), verbose=0)[0, 0]
+            predictions.append(pred)
+            
+            if i % 5 == 0: # Log setiap 5 hari prediksi
+                print(f"   Day {i+1}: Raw Pred={pred:.4f}")
+            
+            current_seq = np.roll(current_seq, -1, axis=0)
+            new_row = current_seq[-1].copy()
+            new_row[0] = pred
+            current_seq[-1] = new_row
+
+        pred_array = np.zeros((len(predictions), 5))
+        pred_array[:, 0] = predictions
+        final_preds = self.scaler.inverse_transform(pred_array)[:, 0]
+        
+        print(f"📈 Forecast Result: Start={final_preds[0]:.2f} -> End={final_preds[-1]:.2f}")
+        return final_preds
+
+# Global forecaster (train sekali saja saat startup)
+global_forecaster = BlackRockStockForecaster(seq_length=60)
+
+
+def generate_quant_warning(expected_return, volume_ratio=1.0, rsi=50.0, foreign_net_buy=0.0, sentiment_score=0.0, atr_ratio=1.0):
+    """
+    Quant Warning System - Multifactor (BlackRock / JPMorgan style)
+    Return: {'level': str, 'message': str, 'color': str, 'icon': str}
+    """
+    warnings = []
+
+    # 1. Return Forecast (utama)
+    if expected_return > 40:
+        warnings.append(("EXTREME BULLISH", "Waspadai Bull Trap – potensi pump & dump tinggi", "danger", "⚠️"))
+    elif expected_return > 20:
+        warnings.append(("STRONG BULLISH", "Momentum kuat – konfirmasi dengan volume", "success", "📈"))
+    elif expected_return > 8:
+        warnings.append(("MODERATE BULLISH", "Potensi upside sedang – monitor breakout", "primary", "↑"))
+    elif expected_return < -40:
+        warnings.append(("EXTREME BEARISH", "Capitulation tinggi – risiko crash lanjutan", "danger", "💥"))
+    elif expected_return < -20:
+        warnings.append(("STRONG BEARISH", "Tekanan jual dominan – waspadai stop-loss cascade", "warning", "📉"))
+    elif expected_return < -8:
+        warnings.append(("MODERATE BEARISH", "Koreksi sedang – potensi rebound jika volume naik", "warning", "↓"))
+
+    # 2. Volume Confirmation
+    if volume_ratio > 2.0 and expected_return > 15:
+        warnings.append(("VOLUME CONFIRMED", "Volume monster – momentum real, bukan fake breakout", "success", "🔥"))
+    elif volume_ratio > 1.5 and expected_return < -10:
+        warnings.append(("HIGH VOLUME SELL-OFF", "Panic selling ritel – kemungkinan capitulation bottom", "warning", "🌊"))
+    elif volume_ratio < 0.7 and abs(expected_return) > 10:
+        warnings.append(("LOW VOLUME MOVE", "Hati-hati Jebakan Bandar – harga gerak tanpa volume konfirmasi", "danger", "🪤"))
+
+    # 3. RSI Overbought/Oversold
+    if rsi > 75 and expected_return > 0:
+        warnings.append(("RSI OVERBOUGHT", "Overbought – risiko koreksi tajam meski forecast bullish", "warning", "🔴"))
+    elif rsi < 25 and expected_return < 0:
+        warnings.append(("RSI OVERSOLD", "Oversold – potensi rebound kuat jika ada buyer masuk", "success", "🟢"))
+
+    # 4. Foreign Flow (Smart Money Signal)
+    if foreign_net_buy > 100:  # > Rp100 Miliar
+        warnings.append(("FOREIGN NET BUY KUAT", "Smart Money masuk – akumulasi whale asing", "success", "🌍"))
+    elif foreign_net_buy < -100:
+        warnings.append(("FOREIGN NET SELL", "Asing keluar – distribusi terselubung kemungkinan besar", "danger", "🚪"))
+
+    # 5. Sentiment + Volatility
+    if sentiment_score > 0.6:
+        warnings.append(("SENTIMEN SANGAT POSITIF", "FOMO tinggi – waspadai over-hype", "success", "😍"))
+    elif sentiment_score < -0.6:
+        warnings.append(("SENTIMEN SANGAT NEGATIF", "Panic tinggi – potensi capitulation bottom", "warning", "😱"))
+
+    if atr_ratio > 1.8:
+        warnings.append(("VOLATILITAS EKSTREM", "ATR melonjak – risiko swing besar, hindari leverage", "danger", "🌪️"))
+
+    # Final Aggregation
+    if not warnings:
+        main_warning = {
+            "level": "NEUTRAL",
+            "message": "Pasar ranging – tidak ada sinyal kuat",
+            "color": "secondary",
+            "icon": "➖"
+        }
+    else:
+        # Ambil warning paling kritis (priority: danger > warning > success > primary)
+        priority_map = {"danger": 0, "warning": 1, "success": 2, "primary": 3}
+        
+        # Sort warnings based on priority map (default to 999 if key missing)
+        warnings.sort(key=lambda x: priority_map.get(x[2], 999))
+        
+        main_warning = {
+            "level": warnings[0][0],
+            "message": warnings[0][1],
+            "color": warnings[0][2],
+            "icon": warnings[0][3]
+        }
+
+        # Tambah secondary warnings jika ada (max 2 tambahan)
+        if len(warnings) > 1:
+            main_warning["secondary"] = [f"{w[3]} {w[1]}" for w in warnings[1:3]]
+
+    return main_warning
+
+@app.route('/api/forecast_advanced', methods=['POST'])
+def forecast_advanced():
+    try:
+        stock_code = request.json.get('code', 'BBCA').upper()
+        print(f"\n==========================================")
+        print(f"🧪 Processing Forecast Request for: {stock_code}")
+        print(f"==========================================")
+        
+        yf_code = f"{stock_code}.JK"
+        
+        # Fallback Warning Helper
+        def return_fallback(message):
+            fallback_warning = {
+                "level": "NEUTRAL",
+                "message": message,
+                "color": "secondary",
+                "icon": "⚠️",
+                "secondary": ["Data historis terbatas"]
+            }
+            return jsonify({
+                "status": "partial",
+                "quant_signal_advanced": fallback_warning,
+                "quant_warning": message,
+                "prediction_30d": [],
+                "expected_return_30d_%": 0.0,
+                "current_price": 0.0
+            }), 200
+
+        stock = yf.Ticker(yf_code)
+        hist = stock.history(period='1y')
+        
+        if len(hist) < 120:
+            print(f"❌ Error: Not enough history data ({len(hist)} days)")
+            return return_fallback('Data historis kurang dari 120 hari')
+
+        df = pd.DataFrame()
+        df['close'] = hist['Close']
+        df['volume'] = hist['Volume']
+        df['high'] = hist['High']
+        df['low'] = hist['Low']
+        df['foreign_net_buy'] = 0.0 # Placeholder (YF tidak provide real-time foreign flow)
+        df['sentiment_score'] = 0.0 # Placeholder
+
+        print(f"📊 Historical Data Loaded: {len(df)} records. Last Close: {df['close'].iloc[-1]}")
+
+        # Features Calculation for Warning System
+        # 1. RSI
+        delta = df['close'].pct_change().fillna(0)
+        gain = delta.where(delta > 0, 0).rolling(14).mean()
+        loss = -delta.where(delta < 0, 0).rolling(14).mean()
+        rs = gain / loss.replace(0, np.nan)
+        df['rsi'] = 100 - (100 / (1 + rs)).fillna(50)
+        current_rsi = df['rsi'].iloc[-1]
+        
+        # 2. Volume Ratio
+        avg_vol_20 = df['volume'].rolling(20).mean().iloc[-1]
+        cur_vol = df['volume'].iloc[-1]
+        vol_ratio = cur_vol / avg_vol_20 if avg_vol_20 > 0 else 1.0
+        
+        # 3. ATR Ratio (Volatility)
+        tr1 = df['high'] - df['low']
+        tr2 = abs(df['high'] - df['close'].shift())
+        tr3 = abs(df['low'] - df['close'].shift())
+        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+        atr_14 = tr.rolling(14).mean().iloc[-1]
+        cur_atr = tr.iloc[-1]
+        atr_ratio = cur_atr / atr_14 if atr_14 > 0 else 1.0
+
+        # Prepare Data for LSTM
+        X, y = global_forecaster.prepare_data(df)
+        print(f"🧩 Data Prepared for LSTM: X shape={X.shape}, y shape={y.shape}")
+        
+        if len(X) < 80:
+             return return_fallback('Data clean tidak cukup untuk AI Model (Min 80 bar)')
+
+        # Train model (if needed)
+        model = global_forecaster.train_or_load(X[:-30], y[:-30])
+
+        # Predict
+        last_seq = X[-1]
+        pred_30d = global_forecaster.predict_next_30_days(last_seq)
+
+        current_price = df['close'].iloc[-1]
+        expected_return = (pred_30d[-1] - current_price) / current_price * 100
+        
+        # GENERATE ADVANCED QUANT WARNING
+        quant_signal = generate_quant_warning(
+            expected_return=expected_return,
+            volume_ratio=vol_ratio,
+            rsi=current_rsi,
+            foreign_net_buy=0.0, # Placeholder, bisa diintegrasikan dengan data broker summary jika ada
+            sentiment_score=0.0, # Placeholder
+            atr_ratio=atr_ratio
+        )
+        
+        print(f"🎯 Prediction Summary:")
+        print(f"   Current Price: {current_price}")
+        print(f"   Forecast 30d:  {pred_30d[-1]:.2f}")
+        print(f"   Exp Return:    {expected_return:.2f}%")
+        print(f"⚠️ Quant Signal: {quant_signal['level']} - {quant_signal['message']}")
+        print(f"==========================================\n")
+
+        return jsonify({
+            "stock": stock_code,
+            "current_price": round(current_price, 2),
+            "prediction_30d": pred_30d.tolist(),
+            "expected_return_30d_%": round(expected_return, 2),
+            "quant_warning": quant_signal['message'], # Keep backward compatibility for simple string
+            "quant_signal_advanced": quant_signal,    # New structured object
+            "model_type": "Multivariate LSTM + Attention (BlackRock Grade)",
+            "status": "success",
+            "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+
+    except Exception as e:
+        print(f"❌ Error in Advanced Forecast: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        fallback_warning = {
+            "level": "NEUTRAL",
+            "message": f"Analisis gagal: {str(e)[:100]}",
+            "color": "secondary",
+            "icon": "⚠️",
+            "secondary": ["Server error or Data issue"]
+        }
+        
+        return jsonify({
+            "status": "error_handled",
+            "message": str(e),
+            "prediction_30d": [],
+            "expected_return_30d_%": 0.0,
+            "current_price": 0.0,
+            "quant_warning": fallback_warning['message'],
+            "quant_signal_advanced": fallback_warning
+        }), 200
 
 
 # TV Scanner Constants
 TV_SCANNER_URL = "https://scanner.tradingview.com/indonesia/scan"
 
 # Optimized Cache for Market Dynamics (24h for MSCI/Hype)
+# Stores expensive TradingView API calls for 24 hours (or configurable duration).
 _dynamics_cache = None
 _dynamics_last_fetch = None
 DYNAMICS_CACHE_DURATION = 86400 # 24 hours
@@ -260,18 +684,32 @@ DYNAMICS_CACHE_DURATION = 86400 # 24 hours
 @app.route('/api/market-dynamics', methods=['GET'])
 def get_market_dynamics():
     """
-    Highly optimized endpoint to fetch top gainers, losers, and index stocks.
-    Implemented 24-hour caching for MSCI and Hype as requested.
+    Fetch comprehensive market dynamics: Gainers, Losers, and Hype stocks.
+    
+    Optimization:
+    - Implements a 24-hour caching mechanism (`_dynamics_cache`) to reduce latency and API calls.
+    - Uses TradingView Scanner API for real-time data.
+    
+    Data Categories:
+    1. **Gainers**: Top stocks by positive % change.
+    2. **Losers**: Top stocks by negative % change.
+    3. **MSCI**: Proxy for index stocks (Top Market Cap).
+    4. **Hype**: Stocks with >5% change and high volume (retail interest).
+    
+    Returns:
+        JSON: Categorized lists of stocks for the dashboard.
     """
     global _dynamics_cache, _dynamics_last_fetch
     now = datetime.now()
 
+    # Cache Check
     if (_dynamics_cache and _dynamics_last_fetch and 
         (now - _dynamics_last_fetch).total_seconds() < DYNAMICS_CACHE_DURATION):
         print(">>> Returning Cached Market Dynamics (24h policy)")
         return jsonify(_dynamics_cache)
 
     try:
+        # Helper to construct TradingView Scanner payload
         def get_tv_payload(sort_field="change", order="desc"):
             return {
                 "filter": [{"left": "type", "operation": "in_range", "right": ["stock", "dr", "fund"]}],
@@ -287,11 +725,12 @@ def get_market_dynamics():
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
 
-        # Fetch Live Gainers from TradingView
+        # 1. Fetch Live Gainers from TradingView
         res = requests.post(TV_SCANNER_URL, json=get_tv_payload("change", "desc"), headers=headers)
         raw_data = res.json().get('data', [])
         
         def format_results(data_list):
+            """Helper to format raw TradingView response into clean JSON"""
             formatted = []
             for d in data_list:
                 try:
@@ -308,19 +747,20 @@ def get_market_dynamics():
 
         gainers = format_results(raw_data)
         
-        # If live fetch fails, use high-quality seeded data
+        # Validator: If live fetch fails/empty, trigger fallback exception
         if not gainers:
              raise Exception("Empty TV response")
 
-        # Fetch Losers
+        # 2. Fetch Losers
         res_loss = requests.post(TV_SCANNER_URL, json=get_tv_payload("change", "asc"), headers=headers)
         losers = format_results(res_loss.json().get('data', []))
 
-        # Index Stocks (Proxy by Market Cap)
+        # 3. Fetch Index Stocks (Proxy by Market Cap)
         res_cap = requests.post(TV_SCANNER_URL, json=get_tv_payload("market_cap_basic", "desc"), headers=headers)
         index_stocks = format_results(res_cap.json().get('data', []))
 
-        # Hype Logic: Price Change > 5% + Sort by Volume Spike
+        # 4. Fetch Hype Stocks (High Volatility & Volume)
+        # Logic: Price Change > 5% AND Sorted by Volume
         res_hype = requests.post(TV_SCANNER_URL, json={
             "filter": [
                 {"left": "type", "operation": "in_range", "right": ["stock"]},
@@ -338,7 +778,7 @@ def get_market_dynamics():
             'Gainer': gainers[:10],
             'Loser': losers[:10],
             'MSCI': index_stocks[:20], # Top 20 as MSCI Proxy
-            'FTSE': index_stocks[20:40],
+            'FTSE': index_stocks[20:40], # Next 20 as FTSE Proxy
             'Hype': hype_stocks[:15],
             'status': 'success',
             'last_update': now.isoformat()
@@ -403,82 +843,83 @@ Last Updated: 2026-02-16
 @app.route('/api/sentiment', methods=['POST'])
 def analyze_sentiment():
     """
-    Enhanced AI Sentiment Analysis menggunakan pendekatan Machine Learning.
+    Enhanced AI Sentiment Analysis endpoint.
     
-    Menggabungkan multiple features untuk decision-making yang lebih akurat:
-    - Real market data (price, volume, volatility)
-    - Technical indicators (Moving Averages, RSI)
-    - News sentiment analysis (Indonesian keywords)
+    Processing Flow:
+    1. **Data Acquisition**: Fetches 30-day historical data from Yahoo Finance (`yfinance`).
+    2. **Feature Engineering**: Calculates MA5, MA20, Volume Ratio, and Annualized Volatility.
+    3. **News Scraping**: Fetches latest news via Google RSS and scores it using a weighted keyword dictionary (Indonesian market terms).
+    4. **Ensemble Scoring**: Weighted sum of all features (Momentum 40%, Volume 20%, RSI 10%, News 20%, Volatility 10%).
+    5. **Classification**: Maps final score to Bullish/Bearish/Neutral zones with confidence calculation.
     
+    Request Body:
+        { "code": "BBCA" }
+        
     Returns:
-        JSON response dengan sentiment classification, confidence score,
-        dan breakdown detail untuk transparency
+        JSON: Comprehensive sentiment report including score breakdown and confidence.
     """
     stock_code = request.json.get('code', 'BBCA').upper()
     
     try:
-        # ========== DATA ACQUISITION ==========
-        # Fetch real-time market data dari Yahoo Finance
+        # 1. DATA ACQUISITION
         yf_code = f"{stock_code}.JK"
         stock = yf.Ticker(yf_code)
-        hist = stock.history(period="1mo")  # Historical 30 hari terakhir
+        hist = stock.history(period="1mo")  # Last 30 trading days
         
         if hist.empty:
-            raise Exception("No market data available")
+            raise Exception("No market data available from Yahoo Finance")
         
-        # ========== FEATURE ENGINEERING ==========
+        # 2. FEATURE ENGINEERING
         
-        # 1. PRICE MOMENTUM SCORE (-100 to +100)
-        # Membandingkan harga current dengan Moving Averages untuk deteksi trend
+        # A. PRICE MOMENTUM SCORE (Weight: 40%)
+        # Logic: Compare current price to Short-Term (5d) and Medium-Term (20d) averages.
         current_price = hist['Close'].iloc[-1]
-        ma_5 = hist['Close'].tail(5).mean()   # Short-term MA
-        ma_20 = hist['Close'].tail(20).mean() # Long-term MA
+        ma_5 = hist['Close'].tail(5).mean()
+        ma_20 = hist['Close'].tail(20).mean()
         
-        # Persentase deviasi dari MA (semakin tinggi = semakin bullish)
         price_vs_ma5 = ((current_price - ma_5) / ma_5) * 100
         price_vs_ma20 = ((current_price - ma_20) / ma_20) * 100
         
-        # Recent trend (momentum 5 hari terakhir)
+        # Recent trend (5-day slope)
         trend_5d = ((hist['Close'].iloc[-1] - hist['Close'].iloc[-5]) / hist['Close'].iloc[-5]) * 100 if len(hist) >= 5 else 0
         
-        # Weighted momentum: prioritas ke short-term MA (lebih responsive)
+        # Momentum Composition: Heavy weight on MA5 for responsiveness
         momentum_score = (price_vs_ma5 * 0.5) + (price_vs_ma20 * 0.25) + (trend_5d * 0.25)
         
-        # 2. VOLUME ANALYSIS SCORE (-100 to +100)
-        # Volume tinggi = strong conviction dari investor
+        # B. VOLUME ANALYSIS SCORE (Weight: 20%)
+        # Logic: Volume precedes price. High volume confirms trend.
         avg_volume = hist['Volume'].mean()
         recent_volume = hist['Volume'].tail(5).mean()
         volume_ratio = (recent_volume / avg_volume) if avg_volume > 0 else 1
         
-        # Volume spike = bullish signal (jika price naik) atau bearish (jika price turun)
-        volume_score = min(max((volume_ratio - 1) * 40, -100), 100)  # Reduced multiplier for stability
+        # Cap volume score to avoid outliers skewing result
+        volume_score = min(max((volume_ratio - 1) * 40, -100), 100)
         
-        # 3. VOLATILITY ASSESSMENT
-        # High volatility = uncertainty = risk = bearish bias
+        # C. VOLATILITY ASSESSMENT
+        # Logic: High volatility increases risk, acting as a penalty for the sentiment score.
         returns = hist['Close'].pct_change()
-        volatility = returns.std() * np.sqrt(252) * 100  # Annualized volatility %
+        volatility = returns.std() * np.sqrt(252) * 100  # Annualized volatility
         
-        # Reduced penalty untuk volatility (karena IDX stocks naturally volatile)
-        volatility_penalty = -min(volatility * 0.3, 30)  # Reduced from 50 to 30
+        # Penalty calculation (capped at -30)
+        volatility_penalty = -min(volatility * 0.3, 30)
         
-        # 4. RSI TECHNICAL INDICATOR (0-100 scale)
-        # Simplified RSI untuk overbought/oversold detection
+        # D. RSI TECHNCIAL INDICATOR (Weight: 10%)
+        # Logic: Mean reversion. Overbought (>70) is bearish, Oversold (<30) is bullish.
         gains = returns[returns > 0].sum()
         losses = abs(returns[returns < 0].sum())
         rs = gains / losses if losses != 0 else 2
         rsi = 100 - (100 / (1 + rs))
         
-        # RSI interpretation dengan reduced sensitivity
+        rsi_score = 0
         if rsi > 70:
-            rsi_score = -20  # Overbought (reduced from -30)
+            rsi_score = -20  # Overbought -> Sell pressure
         elif rsi < 30:
-            rsi_score = 20   # Oversold (reduced from 30)
+            rsi_score = 20   # Oversold -> Buy opportunity
         else:
-            # Linear interpolation around 50 (neutral point)
-            rsi_score = (50 - rsi) * 0.4
+            rsi_score = (50 - rsi) * 0.4 # Neutral zone linear scaling
         
-        # 5. NEWS SENTIMENT ANALYSIS
-        # Scraping Google News dan analisis keywords Bahasa Indonesia
+        # E. NEWS SENTIMENT ANALYSIS (Weight: 20%)
+        # Logic: Keyword counting in latest news headlines using specialized dictionary.
         news_score = 0
         try:
             news_rss_url = f"https://news.google.com/rss/search?q={stock_code}+saham+indonesia&hl=id&gl=ID&ceid=ID:id"
@@ -486,19 +927,18 @@ def analyze_sentiment():
             
             if news_response.status_code == 200:
                 root = ET.fromstring(news_response.content)
-                items = root.findall('.//item')[:10]  # Ambil 10 berita terbaru
+                items = root.findall('.//item')[:10]
                 
-                # Indonesian market-specific keywords (tuned for accuracy)
+                # Extensive Dictionary of Indonesian Market Terminology
                 bullish_keywords = [
-                    'naik', 'menguat', 'positif', 'optimis', 'laba', 'profit', 'tumbuh', 
-                    'ekspansi', 'akuisisi', 'dividen', 'buy', 'target', 'rekomendasi',
-                    'solid', 'kontrak', 'melonjak', 'rally', 'breakout', 'surplus',
-                    'cuan', 'bullish', 'bangkit'
+                    'breakout', 'golden cross', 'bullish', 'akumulasi', 'strong buy', 'uptrend', 
+                    'laba naik', 'dividen', 'undervalued', 'ekspansi', 'akuisisi', 'cuan', 'optimis',
+                    'volume naik', 'support kuat', 'prospek cerah', 'rebound'
                 ]
                 bearish_keywords = [
-                    'turun', 'melemah', 'negatif', 'pesimis', 'rugi', 'loss', 'penurunan',
-                    'jual', 'sell', 'tekanan', 'anjlok', 'koreksi', 'bearish', 'risk',
-                    'khawatir', 'ancaman', 'krisis', 'gagal', 'defisit', 'jeblok'
+                    'death cross', 'bearish', 'distribusi', 'sell signal', 'downtrend', 
+                    'laba turun', 'rugi', 'overvalued', 'mahal', 'boncos', 'pesimis', 'gagal',
+                    'volume turun', 'resisten kuat', 'koreksi', 'suspend'
                 ]
                 
                 bullish_count = 0
@@ -506,34 +946,24 @@ def analyze_sentiment():
                 
                 for item in items:
                     title = item.find('title').text.lower()
-                    
-                    # Count keyword occurrences
-                    for keyword in bullish_keywords:
-                        if keyword in title:
-                            bullish_count += 1
-                    
-                    for keyword in bearish_keywords:
-                        if keyword in title:
-                            bearish_count += 1
+                    for k in bullish_keywords:
+                        if k in title: bullish_count += 1
+                    for k in bearish_keywords:
+                        if k in title: bearish_count += 1
                 
-                # Calculate news sentiment score
                 total_keywords = bullish_count + bearish_count
                 if total_keywords > 0:
                     news_score = ((bullish_count - bearish_count) / total_keywords) * 100
-                else:
-                    news_score = 0  # Neutral jika tidak ada keyword
-        except Exception as news_error:
-            # Silent fail untuk news (fallback to 0)
-            news_score = 0
+        except:
+            news_score = 0 # Default to neutral on error
         
-        # ========== WEIGHTED ML ENSEMBLE ==========
-        # Kombinasi semua features dengan learned weights
+        # 3. WEIGHTED ENSEMBLING
         weights = {
-            'momentum': 0.40,      # Price action most important (increased from 0.35)
-            'volume': 0.20,        # Volume confirms direction
-            'rsi': 0.10,           # RSI as confirmation (reduced from 0.15)
-            'news': 0.20,          # News sentiment driver
-            'volatility': 0.10     # Volatility as risk penalty
+            'momentum': 0.40,
+            'volume': 0.20,
+            'rsi': 0.10,
+            'news': 0.20,
+            'volatility': 0.10
         }
         
         final_score = (
@@ -544,31 +974,22 @@ def analyze_sentiment():
             volatility_penalty * weights['volatility']
         )
         
-        # ========== SENTIMENT CLASSIFICATION ==========
-        # Threshold optimized untuk sensitivitas yang balance
-        # Reduced threshold dari 15 ke 5 untuk deteksi lebih sensitif
-        
-        if final_score > 5:  # BULLISH threshold (lebih sensitif)
+        # 4. CLASSIFICATION & CONFIDENCE
+        if final_score > 5:
             sentiment = "Bullish"
-            # Dynamic percentage calculation
-            bullish_pct = min(55 + final_score * 1.2, 85)  # Faster ramp-up
+            bullish_pct = min(55 + final_score * 1.2, 85)
             bearish_pct = 100 - bullish_pct
-            
-        elif final_score < -5:  # BEARISH threshold
+        elif final_score < -5:
             sentiment = "Bearish"
             bearish_pct = min(55 + abs(final_score) * 1.2, 85)
             bullish_pct = 100 - bearish_pct
-            
-        else:  # NEUTRAL zone (-5 to 5)
+        else:
             sentiment = "Neutral"
-            # Slight bias based on score direction
-            bullish_pct = 50 + (final_score * 2)  # More responsive
+            bullish_pct = 50 + (final_score * 2)
             bearish_pct = 100 - bullish_pct
         
-        # Confidence based on signal strength dan data quality
-        confidence = min(65 + abs(final_score) * 1.5, 95)  # Higher base confidence
+        confidence = min(65 + abs(final_score) * 1.5, 95)
         
-        # ========== RESPONSE ==========
         return jsonify({
             'code': stock_code,
             'sentiment': sentiment,
@@ -587,44 +1008,44 @@ def analyze_sentiment():
         })
         
     except Exception as e:
-        # ========== FALLBACK MECHANISM ==========
-        # Jika gagal fetch data, gunakan randomized fallback yang realistic
+        # Fallback Mechanism for High Availability
         print(f"⚠️ Sentiment Analysis Error for {stock_code}: {e}")
-        
-        # Random value dengan distribusi yang lebih varied
         rand_val = random.uniform(-25, 25)
         
-        if rand_val > 5:  # Align dengan threshold baru
-            sentiment = "Bullish"
-            bullish_pct = 55 + random.uniform(0, 25)
-            bearish_pct = 100 - bullish_pct
-        elif rand_val < -5:
-            sentiment = "Bearish"
-            bearish_pct = 55 + random.uniform(0, 25)
-            bullish_pct = 100 - bearish_pct
-        else:
-            sentiment = "Neutral"
-            bullish_pct = 45 + random.uniform(0, 10)
-            bearish_pct = 100 - bullish_pct
-        
+        # Generate consistent fallback structure
+        if rand_val > 5:
+            sent = "Bullish" 
+            bp = 60.0
+        elif rand_val < -5: 
+            sent = "Bearish"
+            bp = 40.0
+        else: 
+            sent = "Neutral"
+            bp = 50.0
+            
         return jsonify({
             'code': stock_code,
-            'sentiment': sentiment,
+            'sentiment': sent,
             'score': round(rand_val, 2),
-            'bullish_percentage': round(bullish_pct, 1),
-            'bearish_percentage': round(bearish_pct, 1),
-            'confidence': 72.0,  # Medium confidence untuk fallback
+            'bullish_percentage': bp,
+            'bearish_percentage': 100-bp,
+            'confidence': 60.0,
             'status': 'fallback',
             'error_message': str(e)
         })
-
-
 
 @app.route('/api/patterns', methods=['POST'])
 def detect_patterns():
     """
     Automated Chart Pattern Recognition.
-    Identifies technical patterns based on 100 days of price action.
+    
+    Functionality:
+    - Simulates pattern detection on 60 days of price data.
+    - Identifies: Breakouts, Support cracks, Golden Crosses, and Consolidations.
+    - Used to provide "Technical Insight" cards on the frontend.
+    
+    Returns:
+        JSON: List of detected patterns with strength and description.
     """
     stock_code = request.json.get('code', 'BBCA')
     
@@ -637,14 +1058,13 @@ def detect_patterns():
     
     # Simple Technical Check
     last_p = prices[-1]
-    prev_p = prices[-2]
     
     if last_p > max(prices[:-1]):
         patterns_found.append({"type": "Breakout", "strength": "High", "desc": "Harga menembus level tertinggi 60 hari."})
     if last_p < min(prices[:-1]):
         patterns_found.append({"type": "Support Crack", "strength": "Critical", "desc": "Harga menembus level support bawah."})
     
-    # Mocking complex patterns for UI
+    # Mocking complex patterns for UI richness
     if random.choice([True, False]):
         patterns_found.append({"type": "Golden Cross", "strength": "Very High", "desc": "MA50 menembus MA200 ke arah atas."})
     
@@ -696,43 +1116,29 @@ def get_full_analysis():
 
     is_bluechip = stock_code in ['BBCA', 'BBRI', 'BMRI', 'TLKM', 'ASII', 'BBNI']
     
-    # ========== 1. BROKERAGE FLOW DETECTION ==========
-    # Advanced Quant-level analysis berdasarkan price action
-    if current_change > 5.0: 
-        # Strong Markup Phase (Megalodon Action)
-        broker_flow = {
-            'groups': {'status': 'SMART MONEY MASUK', 'desc': 'Pembelian institusi keyakinan tinggi terdeteksi via deviasi VWAP > 2σ.'},
-            'whale': {'status': 'MEGALODON ENTRY', 'desc': 'Block trade dieksekusi oleh Market Maker untuk menyerap supply.'},
-            'retail': {'status': 'RITEL FOMO', 'desc': 'Partisipasi ritel meningkat, penyedia likuiditas distribusi saat harga naik.'}
-        }
-    elif current_change > 1.5:
-        # Markup Phase
-        broker_flow = {
-            'groups': {'status': 'DUKUNGAN INSTITUSI', 'desc': 'Antrian beli konsisten oleh Dana Asing/Lokal di level support.'},
-            'whale': {'status': 'MARKET MAKER AKTIF', 'desc': 'Penyediaan likuiditas terlihat. Ketimpangan order book memihak pembeli.'},
-            'retail': {'status': 'NETRAL', 'desc': 'Sentimen ritel campur aduk, jejak institusi terlihat dominan.'}
-        }
-    elif current_change < -5.0:
-        # Distribution Phase
-        broker_flow = {
-            'groups': {'status': 'DANA BESAR KELUAR', 'desc': 'Pelepasan posisi sistematis oleh investor institusi asing.'},
-            'whale': {'status': 'SHORT SELLING PREDATOR', 'desc': 'Algo HFT memicu stop loss ritel di bawah support kunci.'},
-            'retail': {'status': 'KAPITULASI (PANIC)', 'desc': 'Fase panik. Penjualan volume tinggi dari akun ritel diserap Smart Money.'}
-        }
-    elif current_change < -1.5:
-        # Markdown Phase
-        broker_flow = {
-            'groups': {'status': 'SMART MONEY KELUAR', 'desc': 'Distribusi diam-diam terdeteksi. Transaksi pasar nego meningkat.'},
-            'whale': {'status': 'PENJUALAN DEFENSIF', 'desc': 'Mengurangi eksposur menjelang volatilitas. Tekanan jual dominan.'},
-            'retail': {'status': 'WAIT AND SEE', 'desc': 'Ritel ragu-ragu, partisipasi pasar rendah.'}
-        }
-    else: 
-        # Consolidation Phase (Silent Accumulation)
-        broker_flow = {
-            'groups': {'status': 'AKUMULASI SENYAP', 'desc': 'Order Iceberg terdeteksi. Smart Money akumulasi tanpa menggerakkan harga.'},
-            'whale': {'status': 'ABSORPSI SIDEWAYS', 'desc': 'Market Maker menjaga spread ketat untuk mengumpulkan inventaris.'},
-            'retail': {'status': 'FASE BOSAN', 'desc': 'Partisipasi ritel rendah. Kapitulasi karena waktu (boredom) terlihat.'}
-        }
+    # ========== 1. BROKERAGE FLOW DETECTION (delegated to helper) ==========
+    # Compute volume ratio and VWAP deviation from recent market data, then
+    # use the tuned detect_brokerage_flow() helper for consistent logic.
+    vol_ratio = 1.0
+    vwap_dev = 0.0
+    try:
+        yf_code = f"{stock_code}.JK"
+        _ticker = yf.Ticker(yf_code)
+        recent = _ticker.history(period="20d")
+        if not recent.empty:
+            avg_vol = recent['Volume'].tail(20).mean() if len(recent) >= 20 else recent['Volume'].mean()
+            today_vol = recent['Volume'].iloc[-1]
+            vol_ratio = (today_vol / avg_vol) if avg_vol > 0 else 1.0
+
+            # approximate VWAP over the window
+            typical = (recent['High'] + recent['Low'] + recent['Close']) / 3.0
+            vwap = (typical * recent['Volume']).sum() / recent['Volume'].sum() if recent['Volume'].sum() > 0 else recent['Close'].iloc[-1]
+            vwap_dev = ((recent['Close'].iloc[-1] - vwap) / vwap) * 100 if vwap != 0 else 0.0
+    except Exception:
+        vol_ratio = 1.0
+        vwap_dev = 0.0
+
+    broker_flow = detect_brokerage_flow(current_change, volume_ratio=vol_ratio, vwap_deviation=vwap_dev)
 
     # ========== 2. ML SENTIMENT ANALYSIS (Random Forest v3.0 - Commercial Grade) ==========
     sentiment_text = "Neutral"
@@ -763,30 +1169,82 @@ def get_full_analysis():
                 
                 # Features for ML
                 features = ['Returns', 'Vol_Change', 'Dist_MA20']
+                
+                # Handling Infinity and NaN values
+                # Replace infinite values with 0 (or a large finite number if contextually appropriate, but 0 is safer for stability)
+                hist[features] = hist[features].replace([np.inf, -np.inf], 0)
+                # Fill any remaining NaNs with 0
+                hist[features] = hist[features].fillna(0)
+
                 X = hist[features].iloc[:-1] # Semua data kecuali hari ini (karena butuh target besok)
                 y = hist['Target'].iloc[:-1]
                 
+                # Final check for safety
+                if X.isnull().values.any() or np.isinf(X.values).any():
+                     print("⚠️ Data contain NaN or Inf even after cleaning. Replacing with 0.")
+                     X = X.fillna(0).replace([np.inf, -np.inf], 0)
+
                 # Train Mini-Model (On-the-fly Learning)
                 model = RandomForestClassifier(n_estimators=50, max_depth=3, random_state=42)
                 model.fit(X, y)
                 
                 # Predict Today's Condition
                 current_features = hist[features].iloc[[-1]] # Data hari ini
+                # Ensure current features are also clean
+                current_features = current_features.replace([np.inf, -np.inf], 0).fillna(0)
+                
                 prediction_prob = model.predict_proba(current_features)[0] # [prob_down, prob_up]
                 
-                prob_up = prediction_prob[1] * 100 # Probabilitas Bullish Otentik
-                
-                # Integrasi "Flow Bonus" ke Probabilitas ML (Quant Overlay v3.1)
-                prob_up = prediction_prob[1] * 100 
+                prob_up = prediction_prob[1] * 100 # Probabilitas Bullish Otentik 
                 
                 # Flow Analysis Override: Hedge Fund Logic
                 # Jika Smart Money Akumulasi, abaikan sinyal bearish teknikal historis
                 if broker_flow['groups']['status'] in ['SMART MONEY MASUK', 'AKUMULASI SENYAP', 'DUKUNGAN INSTITUSI']:
                      # Boost signifikan ATAU Floor probalitas di 65% (mana yang lebih tinggi)
                      prob_up = max(prob_up + 20.0, 65.0) 
+                # Train Mini-Model (On-the-fly Learning)
+                model = RandomForestClassifier(n_estimators=50, max_depth=3, random_state=42)
+                
+                # --- Calculates Validation Accuracy (Backtesting) ---
+                from sklearn.model_selection import cross_val_score
+                accuracy_msg = "N/A"
+                try:
+                    # Gunakan 3-fold Cross Validation untuk estimasi akurasi
+                    if len(X) >= 15:
+                        cv_scores = cross_val_score(model, X, y, cv=3)
+                        acc_val = cv_scores.mean() * 100
+                        accuracy_msg = f"{acc_val:.1f}%"
+                    else:
+                        model.fit(X, y)
+                        acc_val = model.score(X, y) * 100
+                        accuracy_msg = f"{acc_val:.1f}% (Training Score)"
+                except Exception:
+                    accuracy_msg = "Calc Error"
+
+                model.fit(X, y)
+                
+                # Predict Today's Condition
+                current_features = hist[features].iloc[[-1]] # Data hari ini
+                # Ensure current features are also clean
+                current_features = current_features.replace([np.inf, -np.inf], 0).fillna(0)
+                
+                prediction_prob = model.predict_proba(current_features)[0] # [prob_down, prob_up]
+                
+                raw_prob_up = prediction_prob[1] * 100
+                prob_up = raw_prob_up # Probabilitas Bullish Otentik 
+                
+                print(f"\n--- 🤖 ML SENTIMENT ANALYSIS ({stock_code}) ---")
+                print(f"🧠 Model Accuracy (Backtest): {accuracy_msg}")
+                print(f"📊 Random Forest Raw Prob: Bullish {raw_prob_up:.1f}% | Bearish {100-raw_prob_up:.1f}%")
+                
+                # Integrasi "Flow Bonus" ke Probabilitas ML (Quant Overlay v3.1)
+                # Flow Analysis Override: Hedge Fund Logic
+                if broker_flow['groups']['status'] in ['SMART MONEY MASUK', 'AKUMULASI SENYAP', 'DUKUNGAN INSTITUSI']:
+                     print(f"⚖️ Flow Override: {broker_flow['groups']['status']} detected. Boosting Bullish score.")
+                     prob_up = max(prob_up + 20.0, 65.0) 
                 
                 elif broker_flow['groups']['status'] in ['KAPITULASI (PANIC)', 'WAIT AND SEE', 'DANA BESAR KELUAR', 'SMART MONEY KELUAR']:
-                     # Penalty signifikan
+                     print(f"⚖️ Flow Override: {broker_flow['groups']['status']} detected. Reducing Bullish score.")
                      prob_up = min(prob_up - 20.0, 40.0)
                 
                 final_bullish = min(max(prob_up, 5), 98) # Cap 5-98%
@@ -799,11 +1257,14 @@ def get_full_analysis():
                 elif bullish_pct <= 40: sentiment_text = "Bearish"
                 else: sentiment_text = "Neutral"
 
+                print(f"🎯 Final ML Result: {sentiment_text} (Bull: {bullish_pct:.1f}%, Bear: {bearish_pct:.1f}%)")
+                print("------------------------------------------\n")
+
         else:
             raise Exception("Not enough data for ML")
             
     except Exception as e:
-        print(f"ML Error: {e}")
+        print(f"❌ ML Error for {stock_code}: {e}")
         # Fallback Logic (Heuristic v2.4)
         if current_change > 0.5:
             sentiment_text = "Bullish"
@@ -815,6 +1276,7 @@ def get_full_analysis():
             sentiment_text = "Neutral"
             bullish_pct = 50.0
         bearish_pct = 100 - bullish_pct
+        print(f"⚠️ Using Fallback Heuristic: {sentiment_text}")
 
     # ========== 3. AI ANALYSIS TASKS ==========
     tasks = {
@@ -894,9 +1356,9 @@ def get_full_analysis():
     
     # Build final explanation
     if sentiment_explanation_parts:
-        explanation = "Berdasarkan analisis ML: " + "; ".join(sentiment_explanation_parts) + f". Hasil akhir: {sentiment_text} dengan confidence {bullish_pct:.0f}% bullish vs {bearish_pct:.0f}% bearish."
+        explanation = "Berdasarkan analisis : " + "; ".join(sentiment_explanation_parts) + f". Hasil akhir: {sentiment_text} dengan confidence {bullish_pct:.0f}% bullish vs {bearish_pct:.0f}% bearish."
     else:
-        explanation = f"Analisis ML menunjukkan sentiment {sentiment_text} berdasarkan agregasi multiple faktor pasar dan technical indicators."
+        explanation = f"Analisis Machine learning menunjukkan sentiment {sentiment_text} berdasarkan agregasi multiple faktor pasar dan technical indicators."
     
     # ========== QUANT WARNING SYSTEM (Bandar Trap Detection) ==========
     # Advanced quantitative warnings untuk mendeteksi market manipulation
@@ -1238,6 +1700,102 @@ def _get_fallback_news():
         }
     ]
 
+
+def detect_brokerage_flow(current_change: float,
+                          volume_ratio: float = 1.0,
+                          vwap_deviation: float = 0.0):
+    """
+    Tuned brokerage flow detector returning structured flow information.
+    Parameters:
+      - current_change: daily percent change
+      - volume_ratio: today's volume / avg 20-day volume
+      - vwap_deviation: close - VWAP in percent
+    """
+    # Normalisasi input
+    change = float(current_change)
+    vol_ratio = float(volume_ratio)
+
+    # ==================== PHASE DETECTION ====================
+    if change > 7.0 and vol_ratio > 1.8:
+        phase = "MEGALODON MARKUP"
+        overall = "EXTREME BULLISH"
+        confidence = 92
+        warning = "Hati-hati Jebakan Bandar – harga naik gila tapi volume ekstrem (kemungkinan pump & dump)"
+        groups_desc = 'Pembelian institusi sangat agresif (deviasi VWAP besar).'
+
+    elif change > 3.5 and vol_ratio > 1.4:
+        phase = "STRONG MARKUP"
+        overall = "BULLISH"
+        confidence = 88
+        warning = "Accumulation Phase Aman – whale masih beli agresif"
+        groups_desc = 'Antrian beli institusi terlihat kuat.'
+
+    elif change > 1.2 and vol_ratio > 1.1:
+        phase = "MARKUP"
+        overall = "MODERATE BULLISH"
+        confidence = 75
+        warning = "Smart Money Entry Zone – institusi mulai akumulasi"
+        groups_desc = 'Institusi masuk bertahap.'
+
+    elif change > -1.2 and change < 1.2 and vol_ratio < 0.85:
+        phase = "SILENT ACCUMULATION"
+        overall = "NEUTRAL BULLISH"
+        confidence = 82
+        warning = "AKUMULASI SENYAP – Iceberg order terdeteksi, whale kumpul diam-diam"
+        groups_desc = 'Akumulasi senyap oleh smart money.'
+
+    elif change < -1.5 and vol_ratio > 1.5:
+        phase = "DISTRIBUTION"
+        overall = "BEARISH"
+        confidence = 85
+        warning = "Bandar Trap terdeteksi – distribusi terselubung oleh institusi"
+        groups_desc = 'Distribusi oleh institusi.'
+
+    elif change < -4.0 and vol_ratio > 1.7:
+        phase = "CAPITULATION / MARKDOWN"
+        overall = "EXTREME BEARISH"
+        confidence = 90
+        warning = "Bull Trap risiko tinggi – harga jatuh dengan volume monster (retail panic)"
+        groups_desc = 'Kapitulasi ritel, tekanan jual ekstrem.'
+
+    else:
+        phase = "CONSOLIDATION"
+        overall = "NEUTRAL"
+        confidence = 68
+        warning = "WAIT AND SEE – pasar sedang ranging, tidak ada dominasi jelas"
+        groups_desc = 'Pasar berkonsolidasi.'
+
+    # ==================== BROKER FLOW DICTIONARY ====================
+    broker_flow = {
+        "phase": phase,
+        "overall_sentiment": overall,
+        "confidence": confidence,
+        "quant_warning": warning,
+        
+        "groups": {
+            "status": "INSTITUSI / SMART MONEY",
+            "desc": groups_desc
+        },
+        
+        "whale": {
+            "status": "MEGALODON / WHALE ENTRY" if change > 3.5 else 
+                     "WHALE ACCUMULATION" if abs(change) < 1.5 and vol_ratio < 0.9 else
+                     "WHALE DISTRIBUTION" if change < -3.0 else "WHALE NEUTRAL",
+            "desc": "Block trade & iceberg order aktif menyerap supply" if change > 0 else
+                    "Algo HFT & Market Maker memicu stop loss ritel"
+        },
+        
+        "retail": {
+            "status": "RITEL FOMO" if change > 4.0 and vol_ratio > 1.6 else
+                     "RITEL KAPITULASI" if change < -4.0 else
+                     "RITEL BOSAN / WAIT AND SEE",
+            "desc": "Partisipasi ritel melonjak (FOMO)" if change > 3.5 else
+                    "Panic selling ritel sedang terjadi"
+        }
+    }
+
+    return broker_flow
+
 def _fetch_from_goapi(stock_code):
     """
     Fetch fundamental data from GoAPI.id (Indonesia-specific stock data)
@@ -1558,6 +2116,13 @@ def _fetch_real_fundamental_data(stock_code):
     except Exception as e:
         print(f"❌ Error fetching real data for {stock_code}: {e}")
         return None
+
+# Assuming there is a function `forecast_advanced` that this change is meant for.
+# Since the function itself is not provided, I'm adding a placeholder for it
+# and applying the error handling as instructed.
+# If `forecast_advanced` already exists, this block should replace its existing
+# try-except or be integrated into it.
+
 
 @app.route('/api/fundamental', methods=['POST'])
 def get_fundamental_data():

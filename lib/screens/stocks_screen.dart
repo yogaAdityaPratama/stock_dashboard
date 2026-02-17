@@ -1,15 +1,24 @@
 // ============================================================================
-// StocksScreen - Halaman browse saham dengan kategori sektor
+// StocksScreen - Advanced Stock Market Explorer Module
 // ============================================================================
 //
-// SECURITY & STABILITY IMPROVEMENTS (White Hat & Bug Hunter Mode):
-// - ✅ Debounced API calls untuk avoid race condition
-// - ✅ Exponential backoff retry mechanism
-// - ✅ Circuit breaker pattern untuk prevent API overload
-// - ✅ Stale-while-revalidate caching strategy
-// - ✅ Request deduplication dengan unique request IDs
-// - ✅ Proper error boundaries dan graceful degradation
-// - ✅ Memory leak prevention dengan proper disposal
+// Description:
+// Key interface for users to browse and search for stocks. It implements a
+// layered architecture focusing on performance, fault tolerance, and UX.
+//
+// ARCHITECTURAL HIGHLIGHTS:
+// 1. **Resilience Strategy**:
+//    - Circuit Breaker Pattern: Automatically stops requests if failures spike, preventing server barriers.
+//    - Exponential Backoff: Retries failed requests with increasing delays (2s, 4s, 8s).
+//
+// 2. **Performance Optimization**:
+//    - Stale-While-Revalidate: Immediately shows cached data while fetching fresh data in the background.
+//    - Debounced Search: Reduces API calls by waiting 500ms after user stops typing.
+//    - Lazy Building: Uses `ListView.builder` for memory-efficient list rendering.
+//
+// 3. **State Management**:
+//    - Uses `AutomaticKeepAliveClientMixin` to preserve scroll position and state when switching tabs.
+//    - Granular state (loading, background refreshing, error) for responsive UI.
 //
 // Author: White Hat Security Analyst & Senior Backend Engineer
 // Version: 3.0.0 (Hardened)
