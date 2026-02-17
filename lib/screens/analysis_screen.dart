@@ -2213,6 +2213,9 @@ class _SmartMoneyFlowSection extends StatelessWidget {
                                     0xFFFFD700,
                                   ); // Gold
                                   break;
+                                case 'INFO':
+                                  warningColor = Colors.blueAccent;
+                                  break;
                                 default:
                                   warningColor = Colors.white70;
                               }

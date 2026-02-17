@@ -24,6 +24,10 @@ app.config['JSON_SORT_KEYS'] = False # Performance optimization for large JSON
 GOAPI_BASE_URL = "https://api.goapi.id/v1/stock"
 GOAPI_KEY = "demo"  # GANTI dengan API key Anda dari goapi.id (gunakan "demo" untuk testing terbatas)
 
+# ================= TradingView Scanner Configuration =================
+# TradingView Scanner API untuk fetch ALL stocks dari Indonesia Stock Exchange (IDX)
+TV_SCANNER_URL = "https://scanner.tradingview.com/indonesia/scan"
+
 # --- Dummy Data & Mock Logic ---
 
 # Professional Investment Criteria (Research-Backed & Verified)
@@ -1711,13 +1715,21 @@ def _fetch_and_update_sectors_sync():
     """Performs the heavy TradingView scan and updates global cache. Runs in caller thread."""
     global _sector_cache, _sector_last_fetch, _sector_fetch_in_progress
     try:
+        # OPTIMIZED PAYLOAD: Ensure ALL stocks from IDX are returned
+        # - Range: [0, 3000] to cover all ~900 IDX stocks + buffer
+        # - Filter: Only basic type filter, no market cap or volume filters
+        # - No aggressive filtering that could exclude small cap stocks
         payload = {
-            "filter": [{"left": "type", "operation": "in_range", "right": ["stock", "dr", "fund"]}],
-            "options": {"lang": "en"}, "markets": ["indonesia"],
+            "filter": [
+                {"left": "type", "operation": "in_range", "right": ["stock", "dr", "fund"]}
+                # NO additional filters - we want ALL stocks
+            ],
+            "options": {"lang": "en"}, 
+            "markets": ["indonesia"],
             "symbols": {"query": {"types": []}, "tickers": []},
             "columns": ["name", "description", "sector", "close", "change"],
             "sort": {"sortBy": "market_cap_basic", "sortOrder": "desc"},
-            "range": [0, 2000]
+            "range": [0, 3000]  # Increased from 2000 to ensure we capture ALL stocks
         }
 
         print(">>> Fetching FULL MARKET Data from TV Scanner (900+ stocks)...")
@@ -1749,7 +1761,24 @@ def _fetch_and_update_sectors_sync():
                 continue
 
         print(f">>> Processing Complete: {processed_count} stocks in {len(sectors)} sectors.")
-        sorted_sectors = dict(sorted(sectors.items(), key=lambda x: len(x[1]), reverse=True)[:15])
+        
+        # VERIFICATION: Log all sector names untuk ensure nothing is dropped
+        print(f">>> All sectors found: {', '.join(sorted(sectors.keys()))}")
+        
+        # BUG FIX: Return ALL sectors instead of top 15 only
+        # Previous code only returned [:15] largest sectors, causing small sectors like
+        # Telecommunications (TLKM) to be excluded from search results
+        sorted_sectors = dict(sorted(
+            sectors.items(),
+            key=lambda x: len(x[1]),  # Sort by number of stocks in sector
+            reverse=True
+        ))  # Removed [:15] limit to include ALL sectors
+        
+        # VERIFICATION: Log stock count per sector
+        for sector_name, stocks in list(sorted_sectors.items())[:10]:  # Show top 10 for brevity
+            print(f">>>   {sector_name}: {len(stocks)} stocks")
+        if len(sorted_sectors) > 10:
+            print(f">>>   ... and {len(sorted_sectors) - 10} more sectors")
         cache_entry = {
             'sectors': sorted_sectors,
             'total_count': processed_count,
