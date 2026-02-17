@@ -2182,7 +2182,7 @@ class _SmartMoneyFlowSection extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'PERINGATAN QUANT',
+                                  'WARNING',
                                   style: GoogleFonts.outfit(
                                     color: const Color(0xFFFF6B35),
                                     fontSize: 12,
