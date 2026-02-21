@@ -15,6 +15,7 @@ import 'screens/analysis_screen.dart';
 import 'screens/portfolio_screen.dart';
 import 'screens/community_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/welcome_screen.dart';
 import 'services/api_service.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -55,7 +56,35 @@ class StockIDApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const MainContainer(),
+      home: const HomeWithSplash(),
+    );
+  }
+}
+
+class HomeWithSplash extends StatefulWidget {
+  const HomeWithSplash({super.key});
+
+  @override
+  State<HomeWithSplash> createState() => _HomeWithSplashState();
+}
+
+class _HomeWithSplashState extends State<HomeWithSplash> {
+  bool _showSplash = true;
+
+  void _hideSplash() {
+    if (mounted) setState(() => _showSplash = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        const MainContainer(),
+        if (_showSplash)
+          WelcomeScreen(
+            onFinish: _hideSplash,
+          ),
+      ],
     );
   }
 }

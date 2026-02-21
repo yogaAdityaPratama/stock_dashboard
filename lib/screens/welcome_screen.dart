@@ -6,7 +6,9 @@ import 'package:google_fonts/google_fonts.dart';
 /// Welcome Screen v1.0.1
 /// Menampilkan animasi/video dari asset/welcome.mp4
 class WelcomeScreen extends StatefulWidget {
-  const WelcomeScreen({super.key});
+  final VoidCallback? onFinish;
+
+  const WelcomeScreen({super.key, this.onFinish});
 
   @override
   State<WelcomeScreen> createState() => _WelcomeScreenState();
@@ -31,10 +33,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       });
 
     // Optional: auto-navigate after 4.5 seconds (short splash)
-    _autoNavigateTimer = Timer(const Duration(milliseconds: 4500), () {
+    _autoNavigateTimer = Timer(const Duration(milliseconds: 6500), () {
       if (mounted) {
-        // Close welcome or navigate to home — here we just pop if possible
-        if (Navigator.canPop(context)) Navigator.pop(context);
+        _controller.pause();
+        widget.onFinish?.call();
       }
     });
   }
@@ -69,91 +71,23 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               // Placeholder while initializing
               Container(color: Colors.black),
 
-            // Overlay: center logo / title
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Small badge or logo
-                  Container(
-                    width: 92,
-                    height: 92,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: Colors.white12),
-                    ),
-                    child: Center(
-                      child: Image.asset(
-                        'asset/logo.png',
-                        width: 64,
-                        height: 64,
-                        fit: BoxFit.contain,
-                        errorBuilder: (c, e, s) => Text(
-                          'StockID',
-                          style: GoogleFonts.outfit(
-                              color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Selamat Datang',
-                    style: GoogleFonts.outfit(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Top-left: skip
+            // Bottom-center: version tag only
             SafeArea(
               child: Align(
-                alignment: Alignment.topLeft,
+                alignment: Alignment.bottomCenter,
                 child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black45,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: () {
-                      // stop video and close welcome
-                      _controller.pause();
-                      if (Navigator.canPop(context)) Navigator.pop(context);
-                    },
-                    child: Text('Skip', style: GoogleFonts.outfit()),
-                  ),
-                ),
-              ),
-            ),
-
-            // Bottom-right: version tag
-            SafeArea(
-              child: Align(
-                alignment: Alignment.bottomRight,
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
+                  padding: const EdgeInsets.only(bottom: 28.0),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white12),
+                      color: Colors.black45,
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       'V.1.0.1',
                       style: GoogleFonts.robotoMono(
                         color: Colors.white70,
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
