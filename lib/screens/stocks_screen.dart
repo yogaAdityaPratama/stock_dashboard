@@ -430,7 +430,10 @@ class _StocksScreenState extends State<StocksScreen>
       }
 
       // Nested payloads: {'data': {'sectors': ...}}
-      if (data is Map && data.containsKey('data') && data['data'] is Map && data['data'].containsKey('sectors')) {
+      if (data is Map &&
+          data.containsKey('data') &&
+          data['data'] is Map &&
+          data['data'].containsKey('sectors')) {
         final s = data['data']['sectors'];
         if (s is Map) {
           final Map<String, List<dynamic>> out = {};

@@ -1,13 +1,20 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'dart:io' show Platform;
 
 class ApiService {
-  // Use 10.0.2.2 for Android emulator to access localhost pointing to Flask
-  // Use http://127.0.0.1:5000 for web/iOS simulator
-  // static const String baseUrl = 'http://127.0.0.1:5000/api'; // For Web/iOS
-  static const String baseUrl =
-      'http://10.0.2.2:5000/api'; // For Android Emulator
+  static String get baseUrl {
+    if (kIsWeb) {
+      return 'http://127.0.0.1:5000/api';
+    }
+    try {
+      if (Platform.isAndroid) {
+        return 'http://10.0.2.2:5000/api';
+      }
+    } catch (_) {}
+    return 'http://127.0.0.1:5000/api';
+  }
 
   Future<Map<String, dynamic>> screenStocks(String analystStyle) async {
     try {
@@ -26,7 +33,82 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Error connecting to backend: $e');
-      // In a real app, handle this gracefully (e.g., return cached data or specific error types)
+    }
+  }
+
+  Future<Map<String, dynamic>> getStrategies() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/strategies'));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to load strategies');
+      }
+    } catch (e) {
+      throw Exception('Error connecting to backend: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> screenStocksV2({
+    required String mode,
+    String? tacticalStrategy,
+    required String timeframe,
+    Map<String, dynamic>? filters,
+    String? userPrompt,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/screen_v2'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'mode': mode,
+          'tactical_strategy': tacticalStrategy,
+          'timeframe': timeframe,
+          'filters': filters ?? {},
+          'user_prompt': userPrompt,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(
+          'Failed to load screening data v2: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error connecting to backend: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> aiChat({
+    required String prompt,
+    List<Map<String, dynamic>>? screeningResults,
+    String? timeframe,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/ai_chat'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'prompt': prompt,
+          'screening_results': screeningResults ?? [],
+          'timeframe': timeframe ?? 'Monthly',
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('AI Chat failed: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('AI Chat Error: $e');
+      return {
+        'response':
+            'Maaf, saya sedang mengalami masalah teknis. Silakan coba lagi.',
+        'suggestions': [],
+      };
     }
   }
 

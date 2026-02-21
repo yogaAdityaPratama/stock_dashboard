@@ -237,121 +237,106 @@ TV_SCANNER_URL = "https://scanner.tradingview.com/indonesia/scan"
 
 # --- Dummy Data & Mock Logic ---
 
-# Professional Investment Criteria (Research-Backed & Verified)
-# Based on actual investment methodologies from institutional investors & market analysts
 ANALYST_CRITERIA = {
-    'Warren Buffett': {
-        'metrics': {
-            'min_roe': 20,              # Consistent ROE >20% (verified from multiple sources)
-            'min_roic': 12,             # Minimum ROIC of 12% for capital efficiency
-            'max_de': 0.5,              # Debt-to-Equity <0.5 (conservative capital structure)
-            'min_eps_growth': 10,       # Steady earnings growth
-            'min_avg_roe_10y': 15       # No year below 15% ROE in 10-year average
-        },
-        'philosophy': 'Economic moat, high-quality cash flow compounding, minimal debt. Focus on businesses with durable competitive advantages that can deploy additional capital at high rates of return.',
-        'confidence_base': 95
-    },
-    'MSCI': {
-        'metrics': {
-            'min_market_cap_b': 1.0,    # Minimum $1B market cap for index inclusion
-            'min_free_float_pct': 15,   # Minimum 15% free float requirement
-            'min_atvr_12m': 20,         # Annual Traded Value Ratio for liquidity
-            'min_trading_freq_3m': 0.9, # 90% trading frequency over 3 months
-            'esg_score': 75             # ESG compliance for sustainable investing
-        },
-        'philosophy': 'Global Investable Market Indexes methodology. Focus on free float-adjusted market cap, investability, and replicability. Quarterly rebalancing ensures index quality.',
+    'Deep Value': {
+        'metrics': {'max_per': 12, 'max_pbv': 1.2, 'min_roe': 15},
+        'philosophy': 'Finding stocks trading below intrinsic value.',
         'confidence_base': 90
     },
-    'BlackRock': {
-        'metrics': {
-            'min_roe': 18,              # High return on equity
-            'min_fcf_yield': 0.08,      # Free cash flow yield >8%
-            'max_pe': 20,               # Reasonable valuation multiples
-            'min_profit_margin': 12,    # Consistent profitability
-            'quality_score': 7          # Multi-factor quality composite (0-10)
-        },
-        'philosophy': 'Systematic Active Equity approach using multi-factor quantitative models. Combines fundamental signals (earnings quality, FCF), market sentiment, and macroeconomic themes. Data-driven portfolio construction.',
-        'confidence_base': 93
+    'Hyper Growth': {
+        'metrics': {'min_profit_growth': 30, 'min_roe': 20},
+        'philosophy': 'High reinvestment and aggressive expansion.',
+        'confidence_base': 85
     },
-    'Andri Hakim': {
-        'metrics': {
-            'max_per': 15,              # Value investing: PER <15x
-            'max_pbv': 2.0,             # Price-to-Book <2x for undervaluation
-            'min_profit_growth': 15,    # Growth component: >15% profit growth
-            'max_der': 1.0,             # Conservative debt levels
-            'competitive_advantage': True, # Must have distinct competitive edge
-            'min_future_viability_yrs': 20 # Business model sustainable 20+ years
-        },
-        'philosophy': 'Indonesian market specialist focusing on "multibagger" opportunities through backdoor listings and M&A. Combines deep value with growth catalysts. Emphasis on understanding business, solid management, and pricing inefficiencies.',
+    'Dividend King': {
+        'metrics': {'min_roe': 15, 'max_de': 0.5},
+        'philosophy': 'Steady cash flow and high dividend yields.',
+        'confidence_base': 92
+    },
+    'Blue Chip': {
+        'metrics': {'min_market_cap_b': 50, 'min_roe': 18},
+        'philosophy': 'Market leaders with long track records.',
+        'confidence_base': 95
+    },
+    'Penny Gems': {
+        'metrics': {'max_price': 500, 'min_profit_growth': 20},
+        'philosophy': 'High-risk, high-reward small caps.',
+        'confidence_base': 75
+    },
+    'Momentum': {
+        'metrics': {'min_volume_spike': 2.0, 'smart_money': True},
+        'philosophy': 'Riding price and volume trends.',
         'confidence_base': 88
     },
-    'Hengky Adinata': {
-        'metrics': {
-            'min_roe': 20,              # Strong fundamentals required
-            'smart_money_flow': True,   # Institutional accumulation detected
-            'broker_accumulation': True, # Dominant buying via broker summary
-            'max_de': 0.5,              # Low debt for safety
-            'min_volume_spike': 2.0,    # 2x average volume indicating interest
-            'early_stage_momentum': True # Before public hype ("Be Early")
-        },
-        'philosophy': 'Bandarmology + Fundamental Analysis. Tracks institutional "smart money" flow and market maker accumulation patterns. Identifies stocks before mainstream attention using broker data, volume analysis, and supply-demand dynamics.',
-        'confidence_base': 87
+    'Bottom Fish': {
+        'metrics': {'max_pbv': 0.8, 'min_roe': 5},
+        'philosophy': 'Turnaround plays and oversold quality.',
+        'confidence_base': 80
     },
-    'Deep Value (Institutional)': {
-        'metrics': {
-            'max_acquirers_multiple': 8, # EV/Operating Profit <8x
-            'max_pb': 1.0,              # Trading below book value
-            'min_piotroski_score': 7,   # Financial strength score (0-9)
-            'min_net_debt_equity': -0.2, # Net cash position preferred
-            'min_market_cap_m': 250,    # $250M minimum for liquidity
-            'min_daily_volume': 100000, # Minimum daily trading volume
-            'earnings_consistency': True # Consistent earnings/dividend history
-        },
-        'philosophy': 'Quantitative deep value screening for institutional-grade opportunities. Focus on companies trading significantly below intrinsic value with strong balance sheets. Uses Acquirer\'s Multiple, Piotroski F-Score, and mean reversion principles.',
-        'confidence_base': 92
+    'Institutional': {
+        'metrics': {'min_market_cap_b': 10, 'smart_money': True},
+        'philosophy': 'Favored by institutional investors.',
+        'confidence_base': 93
+    },
+    'Smart Money': {
+        'metrics': {'smart_money': True, 'min_roe': 15},
+        'philosophy': 'Following the whales and market makers.',
+        'confidence_base': 90
+    },
+    'Scalper': {
+        'metrics': {'min_volume_spike': 3.0},
+        'philosophy': 'Short-term liquidity and volatility play.',
+        'confidence_base': 70
+    },
+    'Warren Buffett': {
+        'metrics': {'min_roe': 20, 'min_roic': 12, 'max_de': 0.5, 'min_eps_growth': 10},
+        'philosophy': 'Economic moat and consistent performance.',
+        'confidence_base': 95
+    },
+    'BlackRock': {
+        'metrics': {'min_roe': 18, 'max_pe': 20, 'min_profit_margin': 12},
+        'philosophy': 'Quantitative multi-factor models.',
+        'confidence_base': 93
     }
 }
 
-# Mock Stock Data
 MOCK_STOCKS = [
-    {
-        'code': 'BBCA', 'name': 'Bank Central Asia', 'price': 9800, 'sector': 'Finance', 
-        'roe': 18.5, 'roic': 16.2, 'per': 24.5, 'pbv': 4.8, 'der': 0.2, 'market_cap': 1200, 
-        'net_profit_growth': 12, 'esg_score': 85, 'fcf_ni': 0.18, 'smart_money': True, 'free_float': 40
-    },
-    {
-        'code': 'ADRO', 'name': 'Adaro Energy', 'price': 2450, 'sector': 'Energy', 
-        'roe': 25.0, 'roic': 21.0, 'per': 4.5, 'pbv': 0.9, 'der': 0.4, 'market_cap': 85, 
-        'net_profit_growth': 150, 'esg_score': 45, 'fcf_ni': 0.22, 'smart_money': False, 'free_float': 30
-    },
-    {
-        'code': 'GOTO', 'name': 'GoTo Gojek Tokopedia', 'price': 84, 'sector': 'Technology', 
-        'roe': -15.0, 'roic': -12.5, 'per': -10.0, 'pbv': 0.8, 'der': 0.1, 'market_cap': 100, 
-        'net_profit_growth': 20, 'esg_score': 78, 'fcf_ni': -0.05, 'smart_money': True, 'free_float': 60
-    },
-    {
-        'code': 'UNTR', 'name': 'United Tractors', 'price': 23500, 'sector': 'Industrial', 
-        'roe': 19.0, 'roic': 15.5, 'per': 6.5, 'pbv': 1.2, 'der': 0.3, 'market_cap': 90, 
-        'net_profit_growth': 8, 'esg_score': 82, 'fcf_ni': 0.16, 'smart_money': True, 'free_float': 25
-    },
+    {'code': 'BBCA', 'name': 'Bank Central Asia', 'price': 9800, 'sector': 'Finance', 'roe': 18.5, 'per': 24.5, 'pbv': 4.8, 'der': 0.2, 'market_cap': 1200, 'net_profit_growth': 12, 'smart_money': True, 'free_float': 40, 'volume_spike': 1.1},
+    {'code': 'ADRO', 'name': 'Adaro Energy', 'price': 2450, 'sector': 'Energy', 'roe': 25.0, 'per': 4.5, 'pbv': 0.9, 'der': 0.4, 'market_cap': 85, 'net_profit_growth': 150, 'smart_money': False, 'free_float': 30, 'volume_spike': 0.9},
+    {'code': 'GOTO', 'name': 'GoTo Gojek Tokopedia', 'price': 84, 'sector': 'Technology', 'roe': -15.0, 'per': -10.0, 'pbv': 0.8, 'der': 0.1, 'market_cap': 100, 'net_profit_growth': 20, 'smart_money': True, 'free_float': 60, 'volume_spike': 2.5},
+    {'code': 'UNTR', 'name': 'United Tractors', 'price': 23500, 'sector': 'Industrial', 'roe': 19.0, 'per': 6.5, 'pbv': 1.2, 'der': 0.3, 'market_cap': 90, 'net_profit_growth': 8, 'smart_money': True, 'free_float': 25, 'volume_spike': 1.2},
+    {'code': 'TLKM', 'name': 'Telkom Indonesia', 'price': 3950, 'sector': 'Telecommunication', 'roe': 16.5, 'per': 14.2, 'pbv': 2.5, 'der': 0.5, 'market_cap': 400, 'net_profit_growth': 5, 'smart_money': True, 'free_float': 35, 'volume_spike': 1.0},
+    {'code': 'ASII', 'name': 'Astra International', 'price': 5200, 'sector': 'Automotive', 'roe': 14.0, 'per': 8.5, 'pbv': 1.1, 'der': 0.4, 'market_cap': 210, 'net_profit_growth': 10, 'smart_money': True, 'free_float': 45, 'volume_spike': 1.3},
+    {'code': 'PTBA', 'name': 'Bukit Asam', 'price': 2700, 'sector': 'Mining', 'roe': 22.0, 'per': 5.2, 'pbv': 1.1, 'der': 0.3, 'market_cap': 35, 'net_profit_growth': 15, 'smart_money': True, 'free_float': 30, 'volume_spike': 1.4},
+    {'code': 'ITMG', 'name': 'Indo Tambangraya', 'price': 26500, 'sector': 'Mining', 'roe': 28.0, 'per': 4.1, 'pbv': 1.3, 'der': 0.2, 'market_cap': 30, 'net_profit_growth': 10, 'smart_money': True, 'free_float': 20, 'volume_spike': 1.1},
+    {'code': 'BJBR', 'name': 'Bank BJB', 'price': 1100, 'sector': 'Finance', 'roe': 16.0, 'per': 6.8, 'pbv': 0.85, 'der': 0.1, 'market_cap': 15, 'net_profit_growth': 5, 'smart_money': True, 'free_float': 25, 'volume_spike': 0.8},
+    {'code': 'AMRT', 'name': 'Sumber Alfaria Trijaya', 'price': 2800, 'sector': 'Consumer', 'roe': 22.0, 'per': 35.0, 'pbv': 9.5, 'der': 0.2, 'market_cap': 115, 'net_profit_growth': 25, 'smart_money': True, 'free_float': 30, 'volume_spike': 1.5},
+    {'code': 'BREN', 'name': 'Barito Renewables', 'price': 7500, 'sector': 'Energy', 'roe': 12.0, 'per': 150.0, 'pbv': 45.0, 'der': 1.5, 'market_cap': 1000, 'net_profit_growth': 45, 'smart_money': True, 'free_float': 10, 'volume_spike': 3.5},
+    {'code': 'CUAN', 'name': 'Petrindo Jaya Kreasi', 'price': 8200, 'sector': 'Energy', 'roe': 8.0, 'per': 200.0, 'pbv': 30.0, 'der': 0.8, 'market_cap': 95, 'net_profit_growth': 500, 'smart_money': True, 'free_float': 15, 'volume_spike': 4.2},
+    {'code': 'BRMS', 'name': 'Bumi Resources Minerals', 'price': 165, 'sector': 'Mining', 'roe': 5.5, 'per': 25.0, 'pbv': 1.2, 'der': 0.1, 'market_cap': 45, 'net_profit_growth': 80, 'smart_money': True, 'free_float': 50, 'volume_spike': 2.8}
 ]
+
+@app.route('/api/strategies', methods=['GET'])
+def get_strategies():
+    """Get list of available tactical and analyst strategies."""
+    strategies = []
+    for name, info in ANALYST_CRITERIA.items():
+        strategies.append({
+            'name': name,
+            'philosophy': info.get('philosophy', ''),
+            'confidence': info.get('confidence_base', 85)
+        })
+    return jsonify({'strategies': strategies})
 
 @app.route('/health', methods=['GET'])
 def health_check():
-    """
-    System Health Check Endpoint.
-    
-    Returns:
-        JSON: Status 'ok' and current server timestamp (ISO format).
-    """
+    """System Health Check Endpoint."""
     return jsonify({'status': 'ok', 'timestamp': datetime.now().isoformat()})
 
 @app.route('/api/screen', methods=['POST'])
 def screen_stocks():
     """
     Screen stocks based on selected Analyst Style and Investment Criteria.
-    
-    Processing Steps:
     1. Receives 'analyst_style' from request body (default: 'Warren Buffett').
     2. Retrieves the corresponding criteria ruleset from ANALYST_CRITERIA.
     3. Iterates through the stock pool (MOCK_STOCKS) and evaluates each stock against the criteria.
@@ -434,6 +419,207 @@ def screen_stocks():
     results.sort(key=lambda x: x['ml_accuracy'], reverse=True)
     
     return jsonify({'results': results, 'meta': {'style': style, 'count': len(results)}})
+
+# Import ML Router
+from ml_router import MLRouter
+ml_router = MLRouter()
+
+@app.route('/api/screen_v2', methods=['POST'])
+def screen_stocks_v2():
+    """
+    Advanced Screening with Hybrid Auto/Manual Mode and Timeframe-Based ML
+    
+    Request Body:
+    {
+        "mode": "auto/manual",
+        "tactical_strategy": "Deep Value",  (optional, for auto mode)
+        "timeframe": "Monthly",
+        "filters": {
+            "price_min": 50,
+            "price_max": 5000,
+            "per_max": 15,
+            "roe_min": 15,
+            "ai_score_min": 75
+        },
+        "user_prompt": "string (optional from chatbox)"
+    }
+    
+    Returns:
+        JSON: ML-enhanced screening results with timeframe-specific predictions
+    """
+    data = request.json
+    mode = data.get('mode', 'auto')
+    tactical = data.get('tactical_strategy', 'Deep Value')
+    timeframe = data.get('timeframe', 'Monthly')
+    filters = data.get('filters', {})
+    user_prompt = data.get('user_prompt')
+    
+    # Get base stocks from existing logic
+    default_strategy = 'Deep Value'
+    criteria = ANALYST_CRITERIA.get(tactical, ANALYST_CRITERIA[default_strategy])
+    base_results = []
+    
+    for stock in MOCK_STOCKS:
+        m = criteria['metrics']
+        score = 0
+        reasons = []
+        
+        # Fundamental checks - Calibrated for high-impact scoring
+        if 'min_roe' in m and stock['roe'] >= m['min_roe']:
+            score += 35  # Major weight
+            reasons.append(f"ROE >= {m['min_roe']}%")
+        
+        if 'max_per' in m and 0 < stock['per'] <= m['max_per']:
+            score += 35  # Major weight
+            reasons.append(f"PER <= {m['max_per']}x")
+        
+        if 'max_pbv' in m and stock['pbv'] <= m['max_pbv']:
+            score += 25  # Supporting weight
+            reasons.append(f"PBV <= {m['max_pbv']}x")
+            
+        if m.get('smart_money') and stock.get('smart_money'):
+            score += 20
+            reasons.append("Institutional Accumulation")
+            
+        if 'min_profit_growth' in m and stock['net_profit_growth'] >= m['min_profit_growth']:
+            score += 20
+            reasons.append(f"Growth >= {m['min_profit_growth']}%")
+
+        if 'min_volume_spike' in m and stock.get('volume_spike', 0) >= m['min_volume_spike']:
+            score += 20
+            reasons.append(f"Volume Spike >= {m['min_volume_spike']}x")
+
+        if 'max_price' in m and stock['price'] <= m['max_price']:
+            score += 15
+            reasons.append(f"Low Entry Price")
+        
+        # Cap score at 100 for visual consistency
+        final_analyst_score = min(score, 99)
+        
+        if final_analyst_score > 0:
+            base_results.append({
+                'code': stock['code'],
+                'name': stock['name'],
+                'price': stock['price'],
+                'analyst_score': final_analyst_score,
+                'match_reasons': reasons,
+            })
+    
+    # Apply ML predictions based on timeframe
+    ml_results = ml_router.predict(base_results, timeframe, filters)
+    
+    # Merge base results with ML predictions
+    final_results = []
+    for ml_pred in ml_results:
+        base = next((b for b in base_results if b['code'] == ml_pred['code']), None)
+        if base:
+            final_results.append({
+                'code': ml_pred['code'],
+                'name': ml_pred['name'],
+                'current_price': ml_pred['current_price'],
+                'analyst_score': base['analyst_score'],
+                'match_reasons': base['match_reasons'],
+                'ml_accuracy': ml_pred['ml_accuracy'],
+                'ml_confidence': ml_pred['ml_confidence'],
+                'model_type': ml_pred['model_type'],
+                'timeframe': timeframe,
+                'entry_signal': ml_pred['entry_signal'],
+                'suggested_horizon': ml_pred.get('suggested_horizon', ''),
+                'technical_score': ml_pred.get('technical_score'),
+                'fundamental_score': ml_pred.get('fundamental_score'),
+                'intrinsic_value': ml_pred.get('intrinsic_value'),
+                'margin_of_safety': ml_pred.get('margin_of_safety'),
+                'is_reverse_merger': False,
+            })
+    
+    # Sort by ML accuracy
+    final_results.sort(key=lambda x: x.get('ml_accuracy', 0), reverse=True)
+    
+    return jsonify({
+        'results': final_results, 
+        'meta': {
+            'mode': mode,
+            'strategy': tactical,
+            'timeframe': timeframe,
+            'ml_engine': ml_router.get_config(timeframe)['model_type'],
+            'count': len(final_results)
+        }
+    })
+
+@app.route('/api/ai_chat', methods=['POST'])
+def ai_chat():
+    """
+    AI Chat endpoint for Natural Language Queries
+    
+    Phase 1: Dummy response that summarizes ML screening results
+    
+    Request Body:
+    {
+        "prompt": "Saham apa saja untuk Daily?",
+        "screening_results": [...],
+        "timeframe": "Monthly"
+    }
+    
+    Returns:
+        JSON: AI response with suggestions
+    """
+    data = request.json
+    prompt = data.get('prompt', '').lower()
+    results = data.get('screening_results', [])
+    timeframe = data.get('timeframe', 'Monthly')
+    
+    # Extract keywords from prompt
+    keywords = {
+        'daily': 'Daily',
+        'weekly': 'Weekly', 
+        'monthly': 'Monthly',
+        'tahunan': 'Year',
+        'year': 'Year',
+        'jangka panjang': 'Long Term',
+        'long term': 'Long Term',
+        'rekomendasi': 'recommendation',
+        'saham': 'stock',
+        'buy': 'buy',
+        'jual': 'sell',
+    }
+    
+    # Generate contextual response
+    if results:
+        top_stock = results[0] if results else None
+        if top_stock:
+            accuracy = top_stock.get('ml_accuracy', 85)
+            code = top_stock.get('code', 'BBCA')
+            signal = top_stock.get('entry_signal', 'BUY')
+            
+            response_text = f"Berdasarkan analisis ML untuk timeframe {timeframe}, saya merekomendasikan {code} dengan akurasi {accuracy:.0f}%. "
+            response_text += f"Sinyal yang dihasilkan adalah {signal}. "
+            
+            if len(results) > 1:
+                other_codes = [r['code'] for r in results[1:3]]
+                response_text += f"Saham alternatif lainnya: {', '.join(other_codes)}."
+            
+            suggestions = [
+                f"Detail analisis {code}",
+                f"Filter dengan ROE > 15%",
+                f"Bandingkan dengan {results[1]['code']}" if len(results) > 1 else "Lihat semua hasil"
+            ]
+        else:
+            response_text = f"Tidak ada saham yang memenuhi kriteria untuk timeframe {timeframe}. Coba ubah parameter filter."
+            suggestions = ["Ubah timeframe", "Perluas filter", "Lihat semua saham"]
+    else:
+        response_text = "Silakan lakukan screening terlebih dahulu, lalu tanyakan tentang rekomendasi saham."
+        suggestions = ["Jalankan screening", "Pilih timeframe", "Hubungkan ke analyst"]
+    
+    # Check for specific queries
+    if 'rekomendasi' in prompt or 'recommend' in prompt:
+        response_text += f" Untuk {timeframe}, model ML memberikan confidence tinggi pada saham-saham dengan score di atas 80%."
+    
+    return jsonify({
+        'response': response_text,
+        'suggestions': suggestions,
+        'timeframe_detected': timeframe,
+        'intent': 'screening_recommendation'
+    })
 
 @app.route('/api/forecast', methods=['POST'])
 def forecast_stock():

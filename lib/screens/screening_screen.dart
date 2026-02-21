@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'dart:ui'; // For ImageFilter
+import 'dart:ui';
 import '../services/api_service.dart';
+import '../widgets/mode_toggle.dart';
+import '../widgets/timeframe_selector.dart';
+import '../widgets/parameter_bottom_sheet.dart';
 import 'analysis_screen.dart';
 
 class ScreeningScreen extends StatefulWidget {
@@ -14,29 +17,16 @@ class ScreeningScreen extends StatefulWidget {
 
 class _ScreeningScreenState extends State<ScreeningScreen> {
   final ApiService _apiService = ApiService();
+  final TextEditingController _chatController = TextEditingController();
 
   String _selectedTactical = 'Deep Value';
+  bool _isAutoMode = true;
+  String _selectedTimeframe = 'Monthly';
+  late ScreeningParameters _screeningParams;
+  String _aiResponse = '';
+  bool _isAiLoading = false;
 
-  final List<String> _tacticals = [
-    'Deep Value',
-    'Hyper Growth',
-    'Dividend King',
-    'Blue Chip',
-    'Penny Gems',
-    'Momentum',
-    'Bottom Fish',
-    'Institutional',
-    'Smart Money',
-    'Scalper',
-  ];
-
-  // UI State for filters
-  double _marketCapValue = 50; // Billion
-  double _freeFloatValue = 15; // Percent
-  RangeValues _priceRange = const RangeValues(50, 1000000);
-  RangeValues _aiScoreRange = const RangeValues(70, 99);
-  bool _perFilter = true;
-  bool _roeFilter = true;
+  List<String> _tacticals = [];
 
   List<dynamic> _allResults = []; // Store original fetch
   List<dynamic> _results = []; // Store filtered
@@ -46,8 +36,55 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
   @override
   void initState() {
     super.initState();
-    _setTacticalDefaults(_selectedTactical);
+    _screeningParams = ScreeningParameters();
+    _fetchTacticals();
     _runScreening();
+  }
+
+  Future<void> _fetchTacticals() async {
+    try {
+      final data = await _apiService.getStrategies();
+      final strategies = data['strategies'] as List;
+      setState(() {
+        _tacticals = strategies.map((s) => s['name'].toString()).toList();
+        if (_tacticals.isNotEmpty && !_tacticals.contains(_selectedTactical)) {
+          _selectedTactical = _tacticals.first;
+          _setTacticalDefaults(_selectedTactical);
+        } else if (_tacticals.isNotEmpty &&
+            _tacticals.contains(_selectedTactical)) {
+          _setTacticalDefaults(_selectedTactical);
+        } else if (_tacticals.isEmpty) {
+          _selectedTactical = 'Deep Value';
+          _setTacticalDefaults(_selectedTactical);
+        }
+      });
+    } catch (e) {
+      debugPrint('Error fetching tacticals: $e');
+      setState(() {
+        _tacticals = [
+          'Deep Value',
+          'Hyper Growth',
+          'Dividend King',
+          'Blue Chip',
+          'Penny Gems',
+          'Momentum',
+          'Bottom Fish',
+          'Institutional',
+          'Smart Money',
+          'Scalper',
+        ];
+        if (!_tacticals.contains(_selectedTactical)) {
+          _selectedTactical = _tacticals.first;
+          _setTacticalDefaults(_selectedTactical);
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _chatController.dispose();
+    super.dispose();
   }
 
   void _setTacticalDefaults(String tactical) {
@@ -55,56 +92,91 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
       _selectedTactical = tactical;
       switch (tactical) {
         case 'Deep Value':
-          _priceRange = const RangeValues(50, 5000);
-          _aiScoreRange = const RangeValues(80, 99);
-          _freeFloatValue = 15;
+          _screeningParams = _screeningParams.copyWith(
+            priceRange: const RangeValues(50, 5000),
+            aiScoreRange: const RangeValues(80, 99),
+            freeFloatValue: 15,
+            perFilter: true,
+            roeFilter: true,
+          );
           break;
         case 'Hyper Growth':
-          _priceRange = const RangeValues(100, 50000);
-          _aiScoreRange = const RangeValues(85, 99);
-          _freeFloatValue = 10;
+          _screeningParams = _screeningParams.copyWith(
+            priceRange: const RangeValues(100, 50000),
+            aiScoreRange: const RangeValues(85, 99),
+            freeFloatValue: 10,
+            perFilter: false,
+            roeFilter: true,
+          );
           break;
         case 'Dividend King':
-          _priceRange = const RangeValues(500, 100000);
-          _aiScoreRange = const RangeValues(75, 99);
-          _freeFloatValue = 20;
+          _screeningParams = _screeningParams.copyWith(
+            priceRange: const RangeValues(500, 100000),
+            aiScoreRange: const RangeValues(75, 99),
+            freeFloatValue: 20,
+            dividendFilter: true,
+          );
           break;
         case 'Blue Chip':
-          _priceRange = const RangeValues(2000, 1000000);
-          _aiScoreRange = const RangeValues(70, 99);
-          _freeFloatValue = 10;
+          _screeningParams = _screeningParams.copyWith(
+            priceRange: const RangeValues(2000, 1000000),
+            aiScoreRange: const RangeValues(70, 99),
+            freeFloatValue: 10,
+            marketCapValue: 100,
+          );
           break;
         case 'Penny Gems':
-          _priceRange = const RangeValues(50, 500);
-          _aiScoreRange = const RangeValues(75, 99);
-          _freeFloatValue = 30;
+          _screeningParams = _screeningParams.copyWith(
+            priceRange: const RangeValues(50, 500),
+            aiScoreRange: const RangeValues(75, 99),
+            freeFloatValue: 30,
+          );
           break;
         case 'Momentum':
-          _priceRange = const RangeValues(100, 20000);
-          _aiScoreRange = const RangeValues(80, 99);
-          _freeFloatValue = 15;
+          _screeningParams = _screeningParams.copyWith(
+            priceRange: const RangeValues(100, 20000),
+            aiScoreRange: const RangeValues(80, 99),
+            freeFloatValue: 15,
+            volumeFilter: true,
+          );
           break;
         case 'Bottom Fish':
-          _priceRange = const RangeValues(50, 2000);
-          _aiScoreRange = const RangeValues(60, 85);
-          _freeFloatValue = 20;
+          _screeningParams = _screeningParams.copyWith(
+            priceRange: const RangeValues(50, 2000),
+            aiScoreRange: const RangeValues(60, 85),
+            freeFloatValue: 20,
+          );
           break;
         case 'Institutional':
-          _priceRange = const RangeValues(1000, 100000);
-          _aiScoreRange = const RangeValues(85, 99);
-          _freeFloatValue = 10;
+          _screeningParams = _screeningParams.copyWith(
+            priceRange: const RangeValues(1000, 100000),
+            aiScoreRange: const RangeValues(85, 99),
+            freeFloatValue: 10,
+          );
           break;
         case 'Smart Money':
-          _priceRange = const RangeValues(100, 50000);
-          _aiScoreRange = const RangeValues(90, 99);
-          _freeFloatValue = 10;
+          _screeningParams = _screeningParams.copyWith(
+            priceRange: const RangeValues(100, 50000),
+            aiScoreRange: const RangeValues(90, 99),
+            freeFloatValue: 10,
+          );
           break;
         case 'Scalper':
-          _priceRange = const RangeValues(50, 1000);
-          _aiScoreRange = const RangeValues(70, 99);
-          _freeFloatValue = 40;
+          _screeningParams = _screeningParams.copyWith(
+            priceRange: const RangeValues(50, 1000),
+            aiScoreRange: const RangeValues(70, 99),
+            freeFloatValue: 40,
+          );
+          break;
+        default:
+          _screeningParams = _screeningParams.copyWith(
+            priceRange: const RangeValues(50, 1000000),
+            aiScoreRange: const RangeValues(0, 99),
+            freeFloatValue: 10,
+          );
           break;
       }
+      _applyFiltersFromParams();
     });
   }
 
@@ -115,8 +187,21 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
     });
 
     try {
-      final style = _selectedTactical;
-      final data = await _apiService.screenStocks(style);
+      Map<String, dynamic> data;
+      if (_isAutoMode) {
+        data = await _apiService.screenStocksV2(
+          mode: 'auto',
+          tacticalStrategy: _selectedTactical,
+          timeframe: 'Monthly',
+          filters: _screeningParams.toJson(),
+        );
+      } else {
+        data = await _apiService.screenStocksV2(
+          mode: 'manual',
+          timeframe: _selectedTimeframe,
+          filters: _screeningParams.toJson(),
+        );
+      }
       setState(() {
         _allResults = data['results'] ?? [];
         _applyFilters();
@@ -139,17 +224,14 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
   void _applyFilters() {
     setState(() {
       _results = _allResults.where((stock) {
-        final price = stock['current_price'] as num;
-        final aiScore = stock['analyst_score'] as num? ?? 0;
-        final freeFloat =
-            stock['free_float'] as num? ??
-            100; // Default to pass if data missing
+        final price = (stock['current_price'] ?? stock['price'] ?? 0) as num;
+        final aiScore =
+            (stock['analyst_score'] ?? stock['ml_accuracy'] ?? 0) as num;
 
-        return price >= _priceRange.start &&
-            price <= _priceRange.end &&
-            aiScore >= _aiScoreRange.start &&
-            aiScore <= _aiScoreRange.end &&
-            freeFloat >= _freeFloatValue;
+        return price >= _screeningParams.priceRange.start &&
+            price <= _screeningParams.priceRange.end &&
+            aiScore >= _screeningParams.aiScoreRange.start &&
+            aiScore <= _screeningParams.aiScoreRange.end;
       }).toList();
     });
   }
@@ -160,7 +242,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(
-          'AI Market Screener',
+          'Market Screener',
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.transparent,
@@ -174,7 +256,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
             fit: BoxFit.fitWidth,
             alignment: Alignment.topCenter,
             colorFilter: ColorFilter.mode(
-              Colors.black.withValues(alpha: 0.7),
+              Colors.black.withOpacity(0.7),
               BlendMode.darken,
             ),
           ),
@@ -187,8 +269,18 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              _buildTacticalTrigger(),
-              _buildControlPanel(),
+              _buildHeaderRow(),
+              if (_isAutoMode) _buildTacticalTrigger(),
+              if (!_isAutoMode) ...[
+                TimeframeSelector(
+                  selectedTimeframe: _selectedTimeframe,
+                  onChanged: (tf) => setState(() => _selectedTimeframe = tf),
+                ),
+                const SizedBox(height: 10),
+              ],
+              _buildParameterTrigger(),
+              const SizedBox(height: 10),
+              if (!_isAutoMode) _buildChatInput(),
               const SizedBox(height: 10),
               _buildTableHeader(),
               Expanded(
@@ -206,7 +298,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
                             'AI Engine Offline\nCheck backend connectivity',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.outfit(
-                              color: Colors.redAccent.withValues(alpha: 0.7),
+                              color: Colors.redAccent.withOpacity(0.7),
                               fontSize: 12,
                             ),
                           ),
@@ -296,13 +388,13 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFFC800FF).withValues(alpha: 0.2)
-                            : Colors.white.withValues(alpha: 0.05),
+                            ? const Color(0xFFC800FF).withOpacity(0.2)
+                            : Colors.white.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: isSelected
                               ? const Color(0xFFC800FF)
-                              : Colors.white.withValues(alpha: 0.1),
+                              : Colors.white.withOpacity(0.1),
                         ),
                       ),
                       alignment: Alignment.center,
@@ -336,14 +428,12 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFFC800FF).withValues(alpha: 0.1),
+            color: const Color(0xFFC800FF).withOpacity(0.1),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: const Color(0xFFC800FF).withValues(alpha: 0.3),
-            ),
+            border: Border.all(color: const Color(0xFFC800FF).withOpacity(0.3)),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFC800FF).withValues(alpha: 0.05),
+                color: const Color(0xFFC800FF).withOpacity(0.05),
                 blurRadius: 10,
                 spreadRadius: 1,
               ),
@@ -354,7 +444,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFC800FF).withValues(alpha: 0.2),
+                  color: const Color(0xFFC800FF).withOpacity(0.2),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -400,326 +490,207 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
     );
   }
 
-  Widget _buildControlPanel() {
-    final currencyFormat = NumberFormat.simpleCurrency(
-      locale: 'id_ID',
-      name: 'Rp ',
-      decimalDigits: 0,
-    );
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A1B3D).withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFF8A2BE2).withValues(alpha: 0.5),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF8A2BE2).withValues(alpha: 0.1),
-            blurRadius: 8,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: Column(
+  Widget _buildHeaderRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
         children: [
-          const SizedBox(height: 4),
-          const SizedBox(height: 12),
-
-          // Price Range Slider
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Price Range',
-                    style: TextStyle(color: Colors.white70, fontSize: 11),
-                  ),
-                  Text(
-                    '${currencyFormat.format(_priceRange.start)} - ${currencyFormat.format(_priceRange.end)}',
-                    style: const TextStyle(
-                      color: Colors.cyanAccent,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: const Color(0xFFBB86FC),
-                  inactiveTrackColor: Colors.white24,
-                  thumbColor: Colors.cyanAccent,
-                  overlayColor: const Color(0xFFBB86FC).withValues(alpha: 0.2),
-                  trackHeight: 2,
-                  thumbShape: const RoundSliderThumbShape(
-                    enabledThumbRadius: 6,
-                  ),
-                ),
-                child: RangeSlider(
-                  values: _priceRange,
-                  min: 50,
-                  max: 1000000,
-                  divisions: 100,
-                  labels: RangeLabels(
-                    currencyFormat.format(_priceRange.start),
-                    currencyFormat.format(_priceRange.end),
-                  ),
-                  onChanged: (RangeValues values) {
-                    setState(() {
-                      _priceRange = values;
-                      _applyFilters();
-                    });
-                  },
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // AI Score Range Slider
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'AI Score Filter',
-                    style: TextStyle(color: Colors.white70, fontSize: 11),
-                  ),
-                  Text(
-                    '${_aiScoreRange.start.toInt()}% - ${_aiScoreRange.end.toInt()}%',
-                    style: const TextStyle(
-                      color: Colors.cyanAccent,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: const Color(0xFFBB86FC),
-                  inactiveTrackColor: Colors.white24,
-                  thumbColor: Colors.cyanAccent,
-                  overlayColor: const Color(0xFFBB86FC).withValues(alpha: 0.2),
-                  trackHeight: 2,
-                  thumbShape: const RoundSliderThumbShape(
-                    enabledThumbRadius: 6,
-                  ),
-                ),
-                child: RangeSlider(
-                  values: _aiScoreRange,
-                  min: 0,
-                  max: 100,
-                  divisions: 100,
-                  labels: RangeLabels(
-                    '${_aiScoreRange.start.toInt()}%',
-                    '${_aiScoreRange.end.toInt()}%',
-                  ),
-                  onChanged: (RangeValues values) {
-                    setState(() {
-                      _aiScoreRange = values;
-                      _applyFilters();
-                    });
-                  },
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-
-          // Filter Rows
-          // Market Cap Slider
-          _buildFilterRow(
-            label: 'Market Cap',
-            child: Expanded(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        activeTrackColor: Colors.white,
-                        inactiveTrackColor: Colors.white24,
-                        thumbColor: const Color(0xFFBB86FC),
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 6,
-                        ),
-                        trackHeight: 2,
-                      ),
-                      child: Slider(
-                        value: _marketCapValue,
-                        min: 0,
-                        max: 100,
-                        onChanged: (v) {
-                          setState(() => _marketCapValue = v);
-                          _applyFilters();
-                        },
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: Text(
-                      '>\$${_marketCapValue.toInt()}B',
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
+          Expanded(
+            child: ModeToggle(
+              isAutoMode: _isAutoMode,
+              onChanged: (isAuto) {
+                setState(() {
+                  _isAutoMode = isAuto;
+                  if (isAuto) {
+                    _setTacticalDefaults(_selectedTactical);
+                  }
+                });
+                _runScreening();
+              },
             ),
-          ),
-          const SizedBox(height: 8),
-          // Free Float Slider
-          _buildFilterRow(
-            label: 'Free Float',
-            child: Expanded(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        activeTrackColor: Colors.white,
-                        inactiveTrackColor: Colors.white24,
-                        thumbColor: Colors.cyanAccent,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 6,
-                        ),
-                        trackHeight: 2,
-                      ),
-                      child: Slider(
-                        value: _freeFloatValue,
-                        min: 0,
-                        max: 100,
-                        onChanged: (v) {
-                          setState(() => _freeFloatValue = v);
-                          _applyFilters();
-                        },
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: Text(
-                      '>${_freeFloatValue.toInt()}%',
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          // PER Toggle
-          _buildFilterRow(
-            label: 'PER < 15',
-            child: Transform.scale(
-              scale: 0.7,
-              child: Switch(
-                value: _perFilter,
-                activeColor: const Color(0xFFBB86FC),
-                activeTrackColor: const Color(
-                  0xFFBB86FC,
-                ).withValues(alpha: 0.3),
-                inactiveThumbColor: Colors.grey,
-                inactiveTrackColor: Colors.black,
-                onChanged: (v) => setState(() => _perFilter = v),
-              ),
-            ),
-            trailingText: '< 15',
-          ),
-          const SizedBox(height: 2),
-          // ROE Toggle
-          _buildFilterRow(
-            label: 'ROE > 15%',
-            child: Transform.scale(
-              scale: 0.7,
-              child: Switch(
-                value: _roeFilter,
-                activeColor: const Color(0xFFBB86FC),
-                activeTrackColor: const Color(
-                  0xFFBB86FC,
-                ).withValues(alpha: 0.3),
-                inactiveThumbColor: Colors.grey,
-                inactiveTrackColor: Colors.black,
-                onChanged: (v) => setState(() => _roeFilter = v),
-              ),
-            ),
-            trailingText: '15%',
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFilterRow({
-    required String label,
-    required Widget child,
-    String? trailingText,
-  }) {
-    return Container(
-      height: 28,
-      decoration: BoxDecoration(
-        // Optional: Add subtle borders to rows if needed like the image
-        border: Border(
-          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+  Widget _buildParameterTrigger() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: GestureDetector(
+        onTap: _showParameterSheet,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF48CAE4).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF48CAE4).withOpacity(0.3)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.tune_rounded,
+                color: const Color(0xFF48CAE4),
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Edit Parameters',
+                style: GoogleFonts.outfit(
+                  color: const Color(0xFF48CAE4),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Color(0xFF48CAE4),
+                size: 18,
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  void _showParameterSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => ParameterBottomSheet(
+        initialParams: _screeningParams,
+        onParamsChanged: (params) {
+          setState(() {
+            _screeningParams = params;
+          });
+          _applyFiltersFromParams();
+          _runScreening();
+        },
+      ),
+    );
+  }
+
+  void _applyFiltersFromParams() {
+    _applyFilters();
+  }
+
+  Widget _buildChatInput() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A1B3D).withOpacity(0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFC800FF).withOpacity(0.3)),
       ),
       child: Row(
         children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              label,
-              style: const TextStyle(color: Colors.white70, fontSize: 11),
+          Expanded(
+            child: TextField(
+              controller: _chatController,
+              style: GoogleFonts.outfit(color: Colors.white, fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'Tanyakan kepada AI...',
+                hintStyle: GoogleFonts.outfit(
+                  color: Colors.white38,
+                  fontSize: 13,
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              onSubmitted: (_) => _sendChat(),
             ),
           ),
           const SizedBox(width: 8),
-          child,
-          if (trailingText != null) ...[
-            Container(
-              margin: const EdgeInsets.only(left: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          GestureDetector(
+            onTap: _isAiLoading ? null : _sendChat,
+            child: Container(
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFBB86FC).withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: const Color(0xFFBB86FC).withValues(alpha: 0.5),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFC800FF), Color(0xFF6C5CE7)],
                 ),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
-                trailingText,
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-              ),
+              child: _isAiLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.send_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
             ),
-          ],
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _sendChat() async {
+    final text = _chatController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() {
+      _isAiLoading = true;
+    });
+
+    try {
+      final response = await _apiService.aiChat(
+        prompt: text,
+        screeningResults: _results.isNotEmpty
+            ? _results
+                  .map(
+                    (s) => {
+                      'code': s['code'],
+                      'ml_accuracy': s['ml_accuracy'],
+                      'entry_signal': s['entry_signal'],
+                    },
+                  )
+                  .toList()
+            : null,
+        timeframe: _selectedTimeframe,
+      );
+
+      setState(() {
+        _aiResponse =
+            response['response'] ??
+            'Maaf, saya tidak dapat memproses permintaan Anda.';
+        _isAiLoading = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_aiResponse, style: GoogleFonts.outfit(fontSize: 12)),
+            backgroundColor: const Color(0xFF1A0A2E),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _aiResponse = 'Terjadi kesalahan. Silakan coba lagi.';
+        _isAiLoading = false;
+      });
+    }
+
+    _chatController.clear();
   }
 
   Widget _buildTableHeader() {
@@ -786,20 +757,17 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
     }
 
     return ListView.builder(
-      itemCount: _results.length + 1, // +1 for Disclaimer
+      itemCount: _results.length,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemBuilder: (context, index) {
-        if (index == _results.length) {
-          return _buildDisclaimer();
-        }
-
         final stock = _results[index];
-        final accuracy = stock['ml_accuracy'] as num;
-        final isReverseMerger = stock['is_reverse_merger'] as bool;
-        final score = stock['analyst_score'] as int;
-        final price = stock['current_price'];
+        final accuracy =
+            (stock['ml_accuracy'] ?? stock['analyst_score'] ?? 0) as num;
+        final isReverseMerger = (stock['is_reverse_merger'] ?? false) as bool;
+        final score =
+            (stock['analyst_score'] ?? stock['ml_accuracy'] ?? 0) as int;
+        final price = stock['current_price'] ?? stock['price'] ?? 0;
 
-        // Highlight row effect for top stocks
         final bool isHighTier = accuracy > 90 && score > 80;
 
         return GestureDetector(
@@ -818,24 +786,16 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
               gradient: isHighTier
                   ? LinearGradient(
                       colors: [
-                        const Color(0xFF4B0082).withValues(alpha: 0.6),
-                        const Color(0xFF8A2BE2).withValues(alpha: 0.3),
+                        const Color(0xFF4B0082).withOpacity(0.6),
+                        const Color(0xFF8A2BE2).withOpacity(0.3),
                       ],
                     )
                   : null,
-              color: isHighTier ? null : Colors.white.withValues(alpha: 0.05),
+              color: isHighTier ? null : Colors.white.withOpacity(0.05),
               borderRadius: BorderRadius.circular(8),
               border: isHighTier
-                  ? Border.all(color: Colors.cyanAccent.withValues(alpha: 0.5))
+                  ? Border.all(color: Colors.cyanAccent.withOpacity(0.5))
                   : Border.all(color: Colors.white10),
-              boxShadow: isHighTier
-                  ? [
-                      BoxShadow(
-                        color: Colors.cyanAccent.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                      ),
-                    ]
-                  : null,
             ),
             child: Row(
               children: [
@@ -871,7 +831,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
                       fontWeight: FontWeight.bold,
                       shadows: [
                         Shadow(
-                          color: Colors.cyanAccent.withValues(alpha: 0.8),
+                          color: Colors.cyanAccent.withOpacity(0.8),
                           blurRadius: 8,
                         ),
                       ],
@@ -920,7 +880,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
           end: Alignment.bottomCenter,
           colors: [
             Colors.transparent,
-            const Color(0xFF1A0A2E).withValues(alpha: 0.9),
+            const Color(0xFF1A0A2E).withOpacity(0.9),
           ],
         ),
       ),
@@ -931,22 +891,22 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [Color(0xFF6A00F4), Color(0xFFC800FF)],
-            ), // Neon Purple Gradient
+            ),
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFC800FF).withValues(alpha: 0.5),
+                color: const Color(0xFFC800FF).withOpacity(0.5),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
             ],
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+            border: Border.all(color: Colors.white.withOpacity(0.2)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: const [
               Text(
-                'Run AI Screening',
+                'Run Screening',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -955,47 +915,10 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
                 ),
               ),
               SizedBox(width: 10),
-              Icon(Icons.smart_toy_outlined, color: Colors.white),
+              Icon(Icons.rocket_launch_rounded, color: Colors.white),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildDisclaimer() {
-    return Container(
-      margin: const EdgeInsets.only(top: 20, bottom: 40),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'DISCLAIMER & DYOR',
-                style: TextStyle(
-                  color: Colors.orange,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Aplikasi ini menggunakan kecerdasan buatan (AI) hanya sebagai alat bantu analisis dan referensi. INI BUKAN SARAN INVESTASI ATAU KEUANGAN. \n\nSelalu lakukan riset mandiri (Do Your Own Research) secara mendalam sebelum mengambil keputusan. Segala keuntungan dan kerugian investasi adalah tanggung jawab penuh Anda masing-masing.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey, fontSize: 11),
-          ),
-        ],
       ),
     );
   }
@@ -1004,9 +927,9 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.02),
+        color: Colors.white.withOpacity(0.02),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: const Text(
         'DISCLAIMER: Sistem AI Screening menggunakan algoritma pembelajaran mesin untuk analisis saham. Hasil screening bersifat informatif dan tidak menjamin keuntungan investasi. Score dan rekomendasi yang diberikan AI adalah prediksi berdasarkan data historis dan pola pasar, bukan saran investasi profesional. Selalu lakukan analisis fundamental dan teknikal mandiri (DYOR) sebelum berinvestasi. Keputusan dan risiko investasi sepenuhnya tanggung jawab Anda.',

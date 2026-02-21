@@ -80,10 +80,7 @@ class _HomeWithSplashState extends State<HomeWithSplash> {
     return Stack(
       children: [
         const MainContainer(),
-        if (_showSplash)
-          WelcomeScreen(
-            onFinish: _hideSplash,
-          ),
+        if (_showSplash) WelcomeScreen(onFinish: _hideSplash),
       ],
     );
   }
@@ -153,7 +150,7 @@ class _MainContainerState extends State<MainContainer> {
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.auto_awesome_rounded),
-                  label: 'AI Screen',
+                  label: 'Screener',
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.forum_rounded),
