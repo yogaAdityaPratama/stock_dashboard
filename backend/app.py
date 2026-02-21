@@ -669,7 +669,9 @@ def generate_quant_warning(expected_return, volume_ratio=1.0, rsi=50.0, foreign_
         _append_detail('return', "MODERATE BEARISH", "Koreksi sedang – potensi rebound jika volume naik", "warning", "↓")
 
     # 2. Volume Confirmation
-    if volume_ratio > 2.0 and expected_return > 15:
+    if volume_ratio > 3.0:
+        _append_detail('volume', "MEGA VOLUME / BLOCK TRADE", "Deteksi Volume Monster – indikasi strategic move atau corporate action", "success", "🐋")
+    elif volume_ratio > 2.0 and expected_return > 15:
         _append_detail('volume', "VOLUME CONFIRMED", "Volume monster – momentum real, bukan fake breakout", "success", "🔥")
     elif volume_ratio > 1.5 and expected_return < -10:
         _append_detail('volume', "HIGH VOLUME SELL-OFF", "Panic selling ritel – kemungkinan capitulation bottom", "warning", "🌊")
@@ -1162,19 +1164,27 @@ def analyze_sentiment():
                 bullish_keywords = [
                     'breakout', 'golden cross', 'bullish', 'akumulasi', 'strong buy', 'uptrend', 
                     'laba naik', 'dividen', 'undervalued', 'ekspansi', 'akuisisi', 'cuan', 'optimis',
-                    'volume naik', 'support kuat', 'prospek cerah', 'rebound'
+                    'volume naik', 'support kuat', 'prospek cerah', 'rebound', 'backdoor listing',
+                    'merger', 'aliansi strategis', 'transaksi jumbo', 'crossing saham', 
+                    'investor strategis', 'pengendali baru', 'laba melonjak', 'right issue'
                 ]
                 bearish_keywords = [
                     'death cross', 'bearish', 'distribusi', 'sell signal', 'downtrend', 
                     'laba turun', 'rugi', 'overvalued', 'mahal', 'boncos', 'pesimis', 'gagal',
-                    'volume turun', 'resisten kuat', 'koreksi', 'suspend'
+                    'volume turun', 'resisten kuat', 'koreksi', 'suspend', 'delisting', 
+                    'wanprestasi', 'gagal bayar', 'pkpu', 'praperadilan'
                 ]
                 
                 bullish_count = 0
                 bearish_count = 0
+                high_impact_catalyst = False
                 
                 for item in items:
                     title = item.find('title').text.lower()
+                    # High Impact Catalyst Detection (Backdoor Listing, Jumbo, etc)
+                    if any(x in title for x in ['backdoor listing', 'merger', 'transaksi jumbo', 'pengendali baru']):
+                        high_impact_catalyst = True
+                    
                     for k in bullish_keywords:
                         if k in title: bullish_count += 1
                     for k in bearish_keywords:
@@ -1183,6 +1193,10 @@ def analyze_sentiment():
                 total_keywords = bullish_count + bearish_count
                 if total_keywords > 0:
                     news_score = ((bullish_count - bearish_count) / total_keywords) * 100
+                
+                # Catalyst Boost: If a major catalyst is detected, ensure the news score reflects it
+                if high_impact_catalyst:
+                    news_score = max(news_score, 85) # High confidence bullish for these catalysts
         except:
             news_score = 0 # Default to neutral on error
         
@@ -1195,6 +1209,12 @@ def analyze_sentiment():
             'volatility': 0.10
         }
         
+        # Catalyst Adjustment: If high impact catalyst is detected, reduce volatility penalty
+        # because the extreme move is justified and likely the start of a major trend.
+        if 'high_impact_catalyst' in locals() and high_impact_catalyst:
+            volatility_penalty = volatility_penalty * 0.2  # Reduce penalty by 80%
+            print(f"🚀 High Impact Catalyst detected: Volatility penalty reduced.")
+
         final_score = (
             momentum_score * weights['momentum'] +
             volume_score * weights['volume'] +
@@ -1524,7 +1544,11 @@ def get_full_analysis():
     sentiment_explanation_parts = []
     
     # Smart Money contribution
-    if broker_flow['groups']['status'] in ['SMART MONEY MASUK', 'AKUMULASI SENYAP']:
+    if broker_flow['groups']['status'] == 'TRANSAKSI JUMBO':
+        sm_contribution = '+25%'
+        sentiment_factors['Smart Money'] = f"Transaksi Jumbo ({sm_contribution})"
+        sentiment_explanation_parts.append(f"Terdeteksi transaksi jumbo/block trade ({sm_contribution})")
+    elif broker_flow['groups']['status'] in ['SMART MONEY MASUK', 'AKUMULASI SENYAP']:
         sm_contribution = '+15%'
         sentiment_factors['Smart Money'] = f"Akumulasi Senyap ({sm_contribution})"
         sentiment_explanation_parts.append(f"Smart Money sedang akumulasi senyap ({sm_contribution})")
@@ -1675,12 +1699,12 @@ def get_full_analysis():
                     })
             
             # WARNING 8: Whale Accumulation Detected (Mega Opportunity)
-            if broker_flow['whale']['status'] == 'MEGALODON ENTRY' and volume_ratio > 3.0:
+            if (broker_flow['whale']['status'] == 'MEGALODON ENTRY' or broker_flow['phase'] == 'TRANSAKSI JUMBO / BLOCK TRADE') and volume_ratio > 3.0:
                 quant_warnings.append({
                     'type': 'MEGA_OPPORTUNITY',
                     'icon': '🐋',
                     'message': 'Mega Whale Accumulation Detected',
-                    'detail': f'Block trade besar-besaran (volume {volume_ratio:.1f}x normal). Megalodon masuk - potensi big move dalam 1-3 minggu.'
+                    'detail': f'Block trade / Transaksi Jumbo besar-besaran (volume {volume_ratio:.1f}x normal). Potensi big move atau corporate action (backdoor listing/M&A) dalam waktu dekat.'
                 })
             
     except Exception as warn_error:
@@ -1945,7 +1969,15 @@ def detect_brokerage_flow(current_change: float,
     vol_ratio = float(volume_ratio)
 
     # ==================== PHASE DETECTION ====================
-    if change > 7.0 and vol_ratio > 1.8:
+    # Transaksi Jumbo Detection (Highest Priority)
+    if vol_ratio > 3.0:
+        phase = "TRANSAKSI JUMBO / BLOCK TRADE"
+        overall = "STRONG BULLISH"
+        confidence = 95
+        warning = "TRANSAKSI JUMBO TERDETEKSI – Crossing besar atau akumulasi masif whale"
+        groups_desc = f'Volume spike ekstrim {vol_ratio:.1f}x normal. Indikasi strategic move / backdoor listing.'
+        
+    elif change > 7.0 and vol_ratio > 1.8:
         phase = "MEGALODON MARKUP"
         overall = "EXTREME BULLISH"
         confidence = 92
@@ -2002,15 +2034,15 @@ def detect_brokerage_flow(current_change: float,
         "quant_warning": warning,
         
         "groups": {
-            "status": "INSTITUSI / SMART MONEY",
+            "status": "TRANSAKSI JUMBO" if phase == "TRANSAKSI JUMBO / BLOCK TRADE" else "INSTITUSI / SMART MONEY",
             "desc": groups_desc
         },
         
         "whale": {
-            "status": "MEGALODON / WHALE ENTRY" if change > 3.5 else 
+            "status": "MEGALODON / WHALE ENTRY" if (change > 3.5 or phase == "TRANSAKSI JUMBO / BLOCK TRADE") else 
                      "WHALE ACCUMULATION" if abs(change) < 1.5 and vol_ratio < 0.9 else
                      "WHALE DISTRIBUTION" if change < -3.0 else "WHALE NEUTRAL",
-            "desc": "Block trade & iceberg order aktif menyerap supply" if change > 0 else
+            "desc": "Block trade & iceberg order aktif menyerap supply" if (change > 0 or phase == "TRANSAKSI JUMBO / BLOCK TRADE") else
                     "Algo HFT & Market Maker memicu stop loss ritel"
         },
         

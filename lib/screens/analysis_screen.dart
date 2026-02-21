@@ -86,13 +86,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   bool _isFundamentalLoading = false;
 
   /// Stores Forecast Result (Prediction 30 days)
-  Map<String, dynamic>? _forecastData;
   final ValueNotifier<Map<String, dynamic>?> _forecastNotifier = ValueNotifier(
     null,
   );
 
   /// Loading state for Advanced Forecast (LSTM)
-  bool _isForecastLoading = false;
 
   // ========== Lifecycle Methods ==========
 
@@ -122,8 +120,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
   Future<void> _fetchAdvancedForecast() async {
     if (!mounted) return;
-    setState(() => _isForecastLoading = true);
-
     try {
       final result = await _apiService.getAdvancedForecast(
         widget.stockData['code'],
@@ -131,15 +127,12 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
       if (mounted && result.isNotEmpty) {
         setState(() {
-          _forecastData = result;
-          _isForecastLoading = false;
           _forecastNotifier.value = result; // Update notifier
         });
         debugPrint("✅ Forecast Data Received: ${result['quant_warning']}");
       }
     } catch (e) {
       debugPrint("⚠️ Forecast Fetch Error: $e");
-      if (mounted) setState(() => _isForecastLoading = false);
     }
   }
 
@@ -1862,9 +1855,11 @@ class _SmartMoneyFlowSection extends StatelessWidget {
           _FlowIndicator(
             label: 'Arus Smart Money',
             status: groups['status'],
-            color: groups['status'] == 'DETECTED'
-                ? Colors.greenAccent
-                : Colors.orangeAccent,
+            color: groups['status'].toString().contains('JUMBO')
+                ? Colors.purpleAccent
+                : (groups['status'] == 'DETECTED'
+                      ? Colors.greenAccent
+                      : Colors.orangeAccent),
             description: groups['desc'],
             icon: Icons.psychology,
           ),
@@ -2731,6 +2726,8 @@ class _AITask {
         s.contains('bullish') ||
         s.contains('optimistic') ||
         s.contains('low') ||
+        s.contains('jumbo') ||
+        s.contains('backdoor') ||
         s.contains('undervalued') ||
         s.contains('positive')) {
       return Colors.greenAccent;
