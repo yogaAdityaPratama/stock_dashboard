@@ -74,16 +74,20 @@ class _TradingViewChartState extends State<TradingViewChart> {
       <!DOCTYPE html>
       <html lang="id">
         <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+          <!-- Allow user scaling and visible overflow so TradingView popups can scroll -->
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             html, body { 
               margin: 0; 
               padding: 0; 
               background-color: #1A0A2E; 
-              overflow: hidden; 
+              /* Allow overlays and dropdowns to escape and be interactive */
+              overflow: visible; 
               width: 100%;
               height: 100%;
+              -webkit-overflow-scrolling: touch;
+              touch-action: manipulation;
             }
             #tradingview_chart { 
               position: absolute; 
@@ -92,6 +96,11 @@ class _TradingViewChartState extends State<TradingViewChart> {
               width: 100%; 
               height: 100%; 
               background-color: #1A0A2E;
+              z-index: 1;
+            }
+            /* Ensure TradingView's popup layers render above app chrome */
+            .tv-lightweight-charts, .tradingview-widget-copyright, .apply-common-tooltip {
+              z-index: 99999 !important;
             }
           </style>
         </head>

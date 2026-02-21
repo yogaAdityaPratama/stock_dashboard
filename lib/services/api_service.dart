@@ -145,6 +145,22 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> getBrokerSummary(String stockCode) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/v1/broker-summary/$stockCode'),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      debugPrint('Broker Summary API Error: ${response.statusCode}');
+      return {};
+    } catch (e) {
+      debugPrint('Broker Summary Connection Error: $e');
+      return {};
+    }
+  }
+
   Future<Map<String, dynamic>> fetchMarketNews() async {
     try {
       final response = await http.post(

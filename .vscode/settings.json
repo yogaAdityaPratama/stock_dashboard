@@ -1,0 +1,14 @@
+{
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "terminal.integrated.profiles.windows": {
+        "PowerShell": {
+            "source": "PowerShell",
+            "icon": "terminal-powershell",
+            "args": [
+                "-NoExit",
+                "-Command",
+                "& \"C:\\Users\\ALVAN\\miniconda3\\shell\\condabin\\conda-hook.ps1\"; conda activate stockid"
+            ]
+        }
+    }
+}

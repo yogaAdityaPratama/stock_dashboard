@@ -290,29 +290,29 @@ class _StocksScreenState extends State<StocksScreen>
 
       final data = await _apiService.fetchSectors().timeout(timeout);
 
-      if (data['sectors'] != null && data['sectors'] is Map) {
-        final sectors = Map<String, List<dynamic>>.from(data['sectors']);
+      // Normalize response into Map<String, List<dynamic>> to avoid
+      // accidental truncation or unexpected shapes from backend.
+      final sectors = _normalizeSectorsFromResponse(data);
 
-        if (sectors.isNotEmpty) {
-          // Success!
-          _circuitBreaker.recordSuccess();
+      if (sectors.isNotEmpty) {
+        // Success!
+        _circuitBreaker.recordSuccess();
 
-          if (mounted) {
-            setState(() {
-              _sectors = sectors;
-              _isLoading = false;
-              _isBackgroundRefreshing = false;
-              _errorMessage = null;
-              _isUsingCache = false;
-            });
-          }
-
-          // Save to cache
-          await SectorsCacheManager.saveToCache(sectors);
-
-          debugPrint('✅ Sectors loaded: ${sectors.keys.length} sectors');
-          return;
+        if (mounted) {
+          setState(() {
+            _sectors = sectors;
+            _isLoading = false;
+            _isBackgroundRefreshing = false;
+            _errorMessage = null;
+            _isUsingCache = false;
+          });
         }
+
+        // Save to cache
+        await SectorsCacheManager.saveToCache(sectors);
+
+        debugPrint('✅ Sectors loaded: ${sectors.keys.length} sectors');
+        return;
       }
 
       throw Exception('Invalid response format');
@@ -359,9 +359,8 @@ class _StocksScreenState extends State<StocksScreen>
         _StocksConfig.extendedTimeout,
       );
 
-      if (data['sectors'] != null && mounted) {
-        final newSectors = Map<String, List<dynamic>>.from(data['sectors']);
-
+      final newSectors = _normalizeSectorsFromResponse(data);
+      if (newSectors.isNotEmpty && mounted) {
         setState(() {
           _sectors = newSectors;
           _isUsingCache = false;
@@ -399,6 +398,56 @@ class _StocksScreenState extends State<StocksScreen>
         _isUsingCache = false;
       });
     }
+  }
+
+  /// Normalize various backend response shapes into a consistent
+  /// Map<String, List<dynamic>> where keys are sector names.
+  Map<String, List<dynamic>> _normalizeSectorsFromResponse(dynamic data) {
+    try {
+      if (data == null) return {};
+
+      // Common case: backend returns {'sectors': { 'Finance': [...], ... }}
+      if (data is Map && data.containsKey('sectors')) {
+        final s = data['sectors'];
+        if (s is Map) {
+          final Map<String, List<dynamic>> out = {};
+          s.forEach((k, v) {
+            try {
+              out[k.toString()] = List<dynamic>.from(v);
+            } catch (_) {
+              out[k.toString()] = [];
+            }
+          });
+          return out;
+        } else if (s is List) {
+          return {'All Sectors': List<dynamic>.from(s)};
+        }
+      }
+
+      // Some APIs might return a plain list of stocks
+      if (data is List) {
+        return {'All Sectors': List<dynamic>.from(data)};
+      }
+
+      // Nested payloads: {'data': {'sectors': ...}}
+      if (data is Map && data.containsKey('data') && data['data'] is Map && data['data'].containsKey('sectors')) {
+        final s = data['data']['sectors'];
+        if (s is Map) {
+          final Map<String, List<dynamic>> out = {};
+          s.forEach((k, v) {
+            try {
+              out[k.toString()] = List<dynamic>.from(v);
+            } catch (_) {
+              out[k.toString()] = [];
+            }
+          });
+          return out;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Failed to normalize sectors response: $e');
+    }
+    return {};
   }
 
   /// Auto-refresh timer setiap 10 menit

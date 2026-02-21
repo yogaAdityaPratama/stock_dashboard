@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../widgets/trading_view_chart.dart';
 import '../services/api_service.dart';
 import 'package:stockid/widgets/quant_warning_blackrock.dart';
+import 'package:stockid/widgets/broker_summary_modal.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// ============================================================================
@@ -467,6 +468,17 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  /// Menampilkan popup Broker Summary
+  void _showBroksumModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) =>
+          BrokerSummaryModal(stockCode: widget.stockData['code']),
     );
   }
 
@@ -1183,7 +1195,10 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                 onToggleFundamental: () {
                   _showFundamentalModal();
                 },
-                forecastNotifier: _forecastNotifier, // Changed
+                forecastNotifier: _forecastNotifier,
+                onTapBroksum: () {
+                  _showBroksumModal();
+                },
               ),
               const SizedBox(height: 12),
               _AITasksSection(
@@ -1515,6 +1530,11 @@ class _PriceHeader extends StatelessWidget {
                 ],
               ),
             ),
+            const Spacer(),
+            IconButton(
+              icon: const Icon(Icons.favorite_border, color: Colors.white),
+              onPressed: () {},
+            ),
           ],
         ),
         const SizedBox(height: 2),
@@ -1618,15 +1638,16 @@ class _SmartMoneyFlowSection extends StatelessWidget {
   final bool isLoading;
   final dynamic stockPrice;
   final VoidCallback? onToggleFundamental;
-  final ValueNotifier<Map<String, dynamic>?>?
-  forecastNotifier; // Changed for reactivity
+  final ValueNotifier<Map<String, dynamic>?>? forecastNotifier;
+  final VoidCallback? onTapBroksum;
 
   const _SmartMoneyFlowSection({
     required this.dynamicAnalysis,
     required this.isLoading,
     required this.stockPrice,
     this.onToggleFundamental,
-    this.forecastNotifier, // Changed
+    this.forecastNotifier,
+    this.onTapBroksum,
   });
 
   /// Menghitung rekomendasi berdasarkan flow data
@@ -1828,27 +1849,7 @@ class _SmartMoneyFlowSection extends StatelessWidget {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: const [
-                  Icon(
-                    Icons.analytics_outlined,
-                    color: Colors.cyanAccent,
-                    size: 16,
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    'DETEKSI ARUS BANDAR',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-              _buildFundamentalButton(),
-            ],
+            children: [_buildBroksumButton(), _buildFundamentalButton()],
           ),
           const SizedBox(height: 12),
 
@@ -2477,6 +2478,41 @@ class _SmartMoneyFlowSection extends StatelessWidget {
                 color: const Color(0xFFFF6B35),
                 fontWeight: FontWeight.bold,
                 fontSize: 11,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build tombol Broksum (Broker Summary)
+  Widget _buildBroksumButton() {
+    return GestureDetector(
+      onTap: onTapBroksum,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.cyanAccent.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.cyanAccent, width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.pie_chart_outline,
+              color: Colors.cyanAccent,
+              size: 14,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'BROKSUM',
+              style: GoogleFonts.outfit(
+                color: Colors.cyanAccent,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
                 letterSpacing: 0.5,
               ),
             ),

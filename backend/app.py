@@ -32,7 +32,6 @@ Version: 3.1.0
 Last Updated: 2026-02-17
 ============================================================================
 """
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -57,6 +56,154 @@ import threading
 app = Flask(__name__)
 CORS(app) # Enable CORS for Flutter frontend
 app.config['JSON_SORT_KEYS'] = False # Performance optimization for large JSON
+
+# ================= Flask-SocketIO Setup =================
+from flask_socketio import SocketIO, emit, disconnect
+socketio = SocketIO(app, cors_allowed_origins="*", ping_timeout=30, ping_interval=10, async_mode='threading')
+
+# Store active subscriptions per symbol
+active_subscriptions = {}
+
+# ================= Broker Summary Service (Integrated from broker_summary_api.py) =================
+import os
+import redis
+import json
+from cachetools import TTLCache
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+USE_REDIS = os.getenv("USE_REDIS", "false").lower() == "true"
+
+ttl_cache = TTLCache(maxsize=100, ttl=300)
+
+try:
+    if USE_REDIS:
+        redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+        print("✅ Redis connected")
+    else:
+        redis_client = None
+        print("⚠️ Redis not enabled, using in-memory TTLCache")
+except Exception as e:
+    redis_client = None
+    print(f"❌ Redis connection failed: {e}, using in-memory TTLCache")
+
+class BrokerSummaryService:
+    def __init__(self):
+        self.ttl_cache = TTLCache(maxsize=100, ttl=300)
+        self.redis_client = redis_client
+
+    def _get_user_agent(self):
+        user_agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15",
+        ]
+        return random.choice(user_agents)
+
+    def get_data(self, symbol: str) -> dict:
+        symbol = symbol.upper()
+        cache_key = f"broker_summary:{symbol}"
+
+        cached = self._get_from_cache(cache_key)
+        if cached:
+            return cached
+        
+        data = self._generate_simulation_data(symbol)
+        self._save_to_cache(cache_key, data)
+        return data
+
+    def _get_from_cache(self, key: str):
+        if self.redis_client:
+            val = self.redis_client.get(key)
+            if val:
+                return json.loads(val)
+        else:
+            return self.ttl_cache.get(key)
+        return None
+
+    def _save_to_cache(self, key: str, data: dict):
+        if self.redis_client:
+            self.redis_client.setex(key, 300, json.dumps(data))
+        else:
+            self.ttl_cache[key] = data
+
+    def _generate_simulation_data(self, symbol: str):
+        base_price = 5000
+        real_volume = 10_000_000
+        price_change_pct = 0.0
+        
+        try:
+            ticker = yf.Ticker(f"{symbol}.JK")
+            hist = ticker.history(period="1d")
+            
+            if not hist.empty:
+                base_price = int(hist['Close'].iloc[-1])
+                prev_close = int(hist['Close'].iloc[-2]) if len(hist) > 1 else base_price
+                real_volume = int(hist['Volume'].iloc[-1])
+                price_change = base_price - prev_close
+                price_change_pct = (price_change / prev_close) if prev_close else 0
+        except Exception:
+            pass
+
+        if price_change_pct > 0.01:
+            market_maker_action = "BUYING"
+            dominance = 0.65
+        elif price_change_pct < -0.01:
+            market_maker_action = "SELLING"
+            dominance = 0.35
+        else:
+            market_maker_action = "NEUTRAL"
+            dominance = 0.50
+
+        total_market_value = (real_volume * base_price)
+        brokers = ["YP", "PD", "AK", "BK", "KZ", "CC", "YU", "DR", "OD", "XC", "NI", "MG", "ZL"]
+        
+        buy_portion_total = total_market_value * dominance
+        sell_portion_total = total_market_value * (1 - dominance)
+        
+        def generate_broker_distribution(total_value_pool, is_buyer):
+            result = []
+            used_brokers = []
+            weights = [0.40, 0.25, 0.15, 0.12, 0.08]
+            
+            for i in range(5):
+                b_code = random.choice(brokers)
+                while b_code in used_brokers: b_code = random.choice(brokers)
+                used_brokers.append(b_code)
+                
+                allocated_value = total_value_pool * weights[i]
+                offset = random.randint(0, 50) if is_buyer else random.randint(-50, 0)
+                avg_price_est = base_price + offset
+                if avg_price_est <= 0: avg_price_est = base_price
+                
+                vol_est = int(allocated_value / avg_price_est)
+                val_billions = allocated_value / 1_000_000_000
+                
+                result.append({
+                    "broker": b_code,
+                    "value": f"{val_billions:.1f}B",
+                    "avg_price": avg_price_est,
+                    "volume": vol_est
+                })
+            return result
+
+        top_buyers = generate_broker_distribution(buy_portion_total, True)
+        top_sellers = generate_broker_distribution(sell_portion_total, False)
+        
+        dominant_broker = top_buyers[0]['broker'] if market_maker_action == "BUYING" else top_sellers[0]['broker']
+        
+        return {
+            "symbol": symbol,
+            "market_maker_action": market_maker_action,
+            "avg_price": base_price,
+            "dominant_broker": dominant_broker,
+            "top_buyers": top_buyers,
+            "top_sellers": top_sellers,
+            "last_updated": datetime.now().isoformat()
+        }
+
+broker_service = BrokerSummaryService()
+
+def fetch_stockbit_data(symbol: str):
+    return broker_service.get_data(symbol)
 
 # ================= GoAPI.id Configuration =================
 # GoAPI.id adalah alternatif data source untuk saham Indonesia
@@ -456,81 +603,111 @@ class BlackRockStockForecaster:
 global_forecaster = BlackRockStockForecaster(seq_length=60)
 
 
-def generate_quant_warning(expected_return, volume_ratio=1.0, rsi=50.0, foreign_net_buy=0.0, sentiment_score=0.0, atr_ratio=1.0):
+def generate_quant_warning(expected_return, volume_ratio=1.0, rsi=50.0, foreign_net_buy=0.0, sentiment_score=0.0, atr_ratio=1.0, broker_activity=None):
     """
     Quant Warning System - Multifactor (BlackRock / JPMorgan style)
-    Return: {'level': str, 'message': str, 'color': str, 'icon': str}
+    Return: {'level': str, 'message': str, 'color': str, 'icon': str, 'brokers': list}
+
+    broker_activity: optional dict mapping activity kinds to lists of broker codes, e.g.
+      {'foreign': ['CLS','UBS'], 'volume': ['BRI'], 'rsi': ['ABC']}
     """
     warnings = []
 
+    def _get_brokers(kind):
+        if not broker_activity:
+            return []
+        v = broker_activity.get(kind)
+        if not v:
+            return []
+        return [str(x) for x in v]
+
+    def _append_detail(kind, level, message, color, icon):
+        brokers = _get_brokers(kind)
+        # Attach brokers inline to message for backwards compatibility
+        msg = message + (" | Brokers: " + ", ".join(brokers) if brokers else "")
+        details.append({
+            "level": level,
+            "message": msg,
+            "color": color,
+            "icon": icon,
+            "brokers": brokers
+        })
+
+    details = []
+
     # 1. Return Forecast (utama)
     if expected_return > 40:
-        warnings.append(("EXTREME BULLISH", "Waspadai Bull Trap – potensi pump & dump tinggi", "danger", "⚠️"))
+        _append_detail('return', "EXTREME BULLISH", "Waspadai Bull Trap – potensi pump & dump tinggi", "danger", "⚠️")
     elif expected_return > 20:
-        warnings.append(("STRONG BULLISH", "Momentum kuat – konfirmasi dengan volume", "success", "📈"))
+        _append_detail('return', "STRONG BULLISH", "Momentum kuat – konfirmasi dengan volume", "success", "📈")
     elif expected_return > 8:
-        warnings.append(("MODERATE BULLISH", "Potensi upside sedang – monitor breakout", "primary", "↑"))
+        _append_detail('return', "MODERATE BULLISH", "Potensi upside sedang – monitor breakout", "primary", "↑")
     elif expected_return < -40:
-        warnings.append(("EXTREME BEARISH", "Capitulation tinggi – risiko crash lanjutan", "danger", "💥"))
+        _append_detail('return', "EXTREME BEARISH", "Capitulation tinggi – risiko crash lanjutan", "danger", "💥")
     elif expected_return < -20:
-        warnings.append(("STRONG BEARISH", "Tekanan jual dominan – waspadai stop-loss cascade", "warning", "📉"))
+        _append_detail('return', "STRONG BEARISH", "Tekanan jual dominan – waspadai stop-loss cascade", "warning", "📉")
     elif expected_return < -8:
-        warnings.append(("MODERATE BEARISH", "Koreksi sedang – potensi rebound jika volume naik", "warning", "↓"))
+        _append_detail('return', "MODERATE BEARISH", "Koreksi sedang – potensi rebound jika volume naik", "warning", "↓")
 
     # 2. Volume Confirmation
     if volume_ratio > 2.0 and expected_return > 15:
-        warnings.append(("VOLUME CONFIRMED", "Volume monster – momentum real, bukan fake breakout", "success", "🔥"))
+        _append_detail('volume', "VOLUME CONFIRMED", "Volume monster – momentum real, bukan fake breakout", "success", "🔥")
     elif volume_ratio > 1.5 and expected_return < -10:
-        warnings.append(("HIGH VOLUME SELL-OFF", "Panic selling ritel – kemungkinan capitulation bottom", "warning", "🌊"))
+        _append_detail('volume', "HIGH VOLUME SELL-OFF", "Panic selling ritel – kemungkinan capitulation bottom", "warning", "🌊")
     elif volume_ratio < 0.7 and abs(expected_return) > 10:
-        warnings.append(("LOW VOLUME MOVE", "Hati-hati Jebakan Bandar – harga gerak tanpa volume konfirmasi", "danger", "🪤"))
+        _append_detail('volume', "LOW VOLUME MOVE", "Hati-hati Jebakan Bandar – harga gerak tanpa volume konfirmasi", "danger", "🪤")
 
     # 3. RSI Overbought/Oversold
     if rsi > 75 and expected_return > 0:
-        warnings.append(("RSI OVERBOUGHT", "Overbought – risiko koreksi tajam meski forecast bullish", "warning", "🔴"))
+        _append_detail('rsi', "RSI OVERBOUGHT", "Overbought – risiko koreksi tajam meski forecast bullish", "warning", "🔴")
     elif rsi < 25 and expected_return < 0:
-        warnings.append(("RSI OVERSOLD", "Oversold – potensi rebound kuat jika ada buyer masuk", "success", "🟢"))
+        _append_detail('rsi', "RSI OVERSOLD", "Oversold – potensi rebound kuat jika ada buyer masuk", "success", "🟢")
 
     # 4. Foreign Flow (Smart Money Signal)
     if foreign_net_buy > 100:  # > Rp100 Miliar
-        warnings.append(("FOREIGN NET BUY KUAT", "Smart Money masuk – akumulasi whale asing", "success", "🌍"))
+        _append_detail('foreign', "FOREIGN NET BUY KUAT", "Smart Money masuk – akumulasi whale asing", "success", "🌍")
     elif foreign_net_buy < -100:
-        warnings.append(("FOREIGN NET SELL", "Asing keluar – distribusi terselubung kemungkinan besar", "danger", "🚪"))
+        _append_detail('foreign', "FOREIGN NET SELL", "Asing keluar – distribusi terselubung kemungkinan besar", "danger", "🚪")
 
     # 5. Sentiment + Volatility
+    # Use a simple heart icon without circle for positive sentiment (UI best practice)
     if sentiment_score > 0.6:
-        warnings.append(("SENTIMEN SANGAT POSITIF", "FOMO tinggi – waspadai over-hype", "success", "😍"))
+        _append_detail('sentiment', "SENTIMEN SANGAT POSITIF", "FOMO tinggi – waspadai over-hype", "success", "❤")
     elif sentiment_score < -0.6:
-        warnings.append(("SENTIMEN SANGAT NEGATIF", "Panic tinggi – potensi capitulation bottom", "warning", "😱"))
+        _append_detail('sentiment', "SENTIMEN SANGAT NEGATIF", "Panic tinggi – potensi capitulation bottom", "warning", "😱")
 
     if atr_ratio > 1.8:
-        warnings.append(("VOLATILITAS EKSTREM", "ATR melonjak – risiko swing besar, hindari leverage", "danger", "🌪️"))
+        _append_detail('volatility', "VOLATILITAS EKSTREM", "ATR melonjak – risiko swing besar, hindari leverage", "danger", "🌪️")
 
     # Final Aggregation
-    if not warnings:
+    if not details:
         main_warning = {
             "level": "NEUTRAL",
             "message": "Pasar ranging – tidak ada sinyal kuat",
             "color": "secondary",
-            "icon": "➖"
+            "icon": "➖",
+            "brokers": [],
+            "details": []
         }
-    else:
-        # Ambil warning paling kritis (priority: danger > warning > success > primary)
-        priority_map = {"danger": 0, "warning": 1, "success": 2, "primary": 3}
-        
-        # Sort warnings based on priority map (default to 999 if key missing)
-        warnings.sort(key=lambda x: priority_map.get(x[2], 999))
-        
-        main_warning = {
-            "level": warnings[0][0],
-            "message": warnings[0][1],
-            "color": warnings[0][2],
-            "icon": warnings[0][3]
-        }
+        return main_warning
 
-        # Tambah secondary warnings jika ada (max 2 tambahan)
-        if len(warnings) > 1:
-            main_warning["secondary"] = [f"{w[3]} {w[1]}" for w in warnings[1:3]]
+    # Prioritize most critical detail for main_warning
+    priority_map = {"danger": 0, "warning": 1, "success": 2, "primary": 3}
+    details.sort(key=lambda d: priority_map.get(d.get('color', ''), 999))
+
+    main = details[0]
+    main_warning = {
+        "level": main.get('level'),
+        "message": main.get('message'),
+        "color": main.get('color'),
+        "icon": main.get('icon'),
+        "brokers": main.get('brokers'),
+        "details": details[0:5]  # return up to 5 detail items for UI
+    }
+
+    # Add up to two secondary messages (messages only) for backward compatibility
+    if len(details) > 1:
+        main_warning['secondary'] = [f"{d.get('icon')} {d.get('message')}" for d in details[1:3]]
 
     return main_warning
 
@@ -591,7 +768,7 @@ def forecast_advanced():
         # 2. Volume Ratio
         avg_vol_20 = df['volume'].rolling(20).mean().iloc[-1]
         cur_vol = df['volume'].iloc[-1]
-        vol_ratio = cur_vol / avg_vol_20 if avg_vol_20 > 0 else 1.0
+        vol_ratio = cur_vol / avg_vol_20 if avg_vol_20 > 0 else 1.0  # Calculate volume ratio
         
         # 3. ATR Ratio (Volatility)
         tr1 = df['high'] - df['low']
@@ -620,13 +797,21 @@ def forecast_advanced():
         expected_return = (pred_30d[-1] - current_price) / current_price * 100
         
         # GENERATE ADVANCED QUANT WARNING
+        # Try to assemble broker_activity from available data (best-effort)
+        broker_activity = None
+        if 'broker_codes' in df.columns:
+            last_codes = df['broker_codes'].iloc[-1]
+            if isinstance(last_codes, (list, tuple)) and last_codes:
+                broker_activity = {'foreign': list(last_codes)}
+
         quant_signal = generate_quant_warning(
             expected_return=expected_return,
             volume_ratio=vol_ratio,
             rsi=current_rsi,
-            foreign_net_buy=0.0, # Placeholder, bisa diintegrasikan dengan data broker summary jika ada
-            sentiment_score=0.0, # Placeholder
-            atr_ratio=atr_ratio
+            foreign_net_buy=0.0,
+            sentiment_score=0.0,
+            atr_ratio=atr_ratio,
+            broker_activity=broker_activity
         )
         
         print(f"🎯 Prediction Summary:")
@@ -718,7 +903,7 @@ def get_market_dynamics():
                 "symbols": {"query": {"types": []}, "tickers": []},
                 "columns": ["name", "close", "change", "description"],
                 "sort": {"sortBy": sort_field, "sortOrder": order},
-                "range": [0, 50]
+                "range": [0, 100]
             }
 
         headers = {
@@ -764,22 +949,22 @@ def get_market_dynamics():
         res_hype = requests.post(TV_SCANNER_URL, json={
             "filter": [
                 {"left": "type", "operation": "in_range", "right": ["stock"]},
-                {"left": "change", "operation": "greater", "right": 5}
+                {"left": "change", "operation": "greater", "right": 3}
             ],
             "options": {"lang": "en"}, "markets": ["indonesia"],
             "symbols": {"query": {"types": []}, "tickers": []},
             "columns": ["name", "close", "change", "description", "volume"],
             "sort": {"sortBy": "volume", "sortOrder": "desc"},
-            "range": [0, 20]
+            "range": [0, 50]
         }, headers=headers)
         hype_stocks = format_results(res_hype.json().get('data', []))
 
         final_data = {
-            'Gainer': gainers[:10],
-            'Loser': losers[:10],
-            'MSCI': index_stocks[:20], # Top 20 as MSCI Proxy
-            'FTSE': index_stocks[20:40], # Next 20 as FTSE Proxy
-            'Hype': hype_stocks[:15],
+            'Gainer': gainers[:15] if len(gainers) >= 10 else gainers,
+            'Loser': losers[:15] if len(losers) >= 10 else losers,
+            'MSCI': index_stocks[:20] if len(index_stocks) >= 10 else index_stocks,
+            'FTSE': index_stocks[20:40] if len(index_stocks) >= 30 else index_stocks[:20],
+            'Hype': hype_stocks[:15] if len(hype_stocks) >= 10 else hype_stocks,
             'status': 'success',
             'last_update': now.isoformat()
         }
@@ -792,7 +977,6 @@ def get_market_dynamics():
 
     except Exception as e:
         print(f"Backend Warning: {e}. Serving seeded data.")
-        # Best Practice: Always serve something meaningful
         seed_pool = [
             {'code': 'BBCA', 'name': 'Bank Central Asia', 'price': 9850, 'changeNum': 1.2, 'change': '+1.2%'},
             {'code': 'BBRI', 'name': 'Bank Rakyat Indonesia', 'price': 6125, 'changeNum': 0.8, 'change': '+0.8%'},
@@ -801,15 +985,41 @@ def get_market_dynamics():
             {'code': 'PTRO', 'name': 'Petrosea', 'price': 8500, 'changeNum': 7.5, 'change': '+7.5%'},
             {'code': 'BREN', 'name': 'Barito Renewables', 'price': 6000, 'changeNum': 4.2, 'change': '+4.2%'},
             {'code': 'CUAN', 'name': 'Petrindo Jaya', 'price': 7200, 'changeNum': 9.1, 'change': '+9.1%'},
-            {'code': 'GOTO', 'name': 'GoTo Tech', 'price': 85, 'changeNum': -1.4, 'change': '-1.4%'},
+            {'code': 'GOTO', 'name': 'GoTo Gojek Tokopedia', 'price': 85, 'changeNum': -1.4, 'change': '-1.4%'},
+            {'code': 'BBNI', 'name': 'Bank Negara Indonesia', 'price': 5100, 'changeNum': 1.5, 'change': '+1.5%'},
+            {'code': 'ASII', 'name': 'Astra International', 'price': 5250, 'changeNum': 0.3, 'change': '+0.3%'},
+            {'code': 'UNTR', 'name': 'United Tractors', 'price': 23500, 'changeNum': 3.2, 'change': '+3.2%'},
+            {'code': 'ADRO', 'name': 'Adaro Energy', 'price': 2450, 'changeNum': -2.1, 'change': '-2.1%'},
+            {'code': 'ANTM', 'name': 'Aneka Tambang', 'price': 1850, 'changeNum': 5.5, 'change': '+5.5%'},
+            {'code': 'MDKA', 'name': 'Merdeka Copper Gold', 'price': 3850, 'changeNum': 6.8, 'change': '+6.8%'},
+            {'code': 'BRPT', 'name': 'Barito Pacific', 'price': 1420, 'changeNum': -3.2, 'change': '-3.2%'},
+            {'code': 'ICBP', 'name': 'Indofood CBP', 'price': 11200, 'changeNum': 0.5, 'change': '+0.5%'},
+            {'code': 'INDF', 'name': 'Indofood Sukses Makmur', 'price': 7150, 'changeNum': -0.8, 'change': '-0.8%'},
+            {'code': 'UNVR', 'name': 'Unilever Indonesia', 'price': 4450, 'changeNum': -1.5, 'change': '-1.5%'},
+            {'code': 'HMSP', 'name': 'HM Sampoerna', 'price': 1350, 'changeNum': 2.5, 'change': '+2.5%'},
+            {'code': 'KLBF', 'name': 'Kalbe Farma', 'price': 1620, 'changeNum': 1.1, 'change': '+1.1%'},
+            {'code': 'AMRT', 'name': 'Sumber Alfaria Trijaya', 'price': 2650, 'changeNum': 4.5, 'change': '+4.5%'},
+            {'code': 'ACES', 'name': 'Ace Hardware Indonesia', 'price': 650, 'changeNum': -0.3, 'change': '-0.3%'},
+            {'code': 'MAPI', 'name': 'Mitra Adiperkasa', 'price': 1420, 'changeNum': 8.2, 'change': '+8.2%'},
+            {'code': 'EMTK', 'name': 'Elang Mahkota Teknologi', 'price': 1350, 'changeNum': -4.5, 'change': '-4.5%'},
+            {'code': 'BUKA', 'name': 'Bukalapak', 'price': 320, 'changeNum': 3.8, 'change': '+3.8%'},
+            {'code': 'ARTO', 'name': 'Bank Jago', 'price': 4200, 'changeNum': -2.8, 'change': '-2.8%'},
+            {'code': 'BBYB', 'name': 'Bank Neo Commerce', 'price': 210, 'changeNum': 5.0, 'change': '+5.0%'},
+            {'code': 'EXCL', 'name': 'XL Axiata', 'price': 1650, 'changeNum': 1.8, 'change': '+1.8%'},
+            {'code': 'ISAT', 'name': 'Indosat Ooredoo', 'price': 2100, 'changeNum': -1.2, 'change': '-1.2%'},
+            {'code': 'JSMR', 'name': 'Jasa Marga', 'price': 4200, 'changeNum': 2.3, 'change': '+2.3%'},
         ]
         
+        gainers_list = sorted([s for s in seed_pool if s['changeNum'] > 0], key=lambda x: x['changeNum'], reverse=True)
+        losers_list = sorted([s for s in seed_pool if s['changeNum'] < 0], key=lambda x: x['changeNum'])
+        hype_list = sorted([s for s in seed_pool if s['changeNum'] > 3], key=lambda x: x['changeNum'], reverse=True)
+        
         fallback_data = {
-            'Gainer': [s for s in seed_pool if s['changeNum'] > 5][:5],
-            'Loser': [s for s in seed_pool if s['changeNum'] < 0][:5],
-            'MSCI': seed_pool[:4],
-            'FTSE': seed_pool[4:6],
-            'Hype': [s for s in seed_pool if s['changeNum'] > 7],
+            'Gainer': gainers_list[:15],
+            'Loser': losers_list[:15],
+            'MSCI': seed_pool[:20],
+            'FTSE': seed_pool[20:40] if len(seed_pool) > 20 else seed_pool[:15],
+            'Hype': hype_list[:15],
             'status': 'seeded',
             'last_update': now.isoformat()
         }
@@ -2294,16 +2504,27 @@ def _fetch_and_update_sectors_sync():
             "symbols": {"query": {"types": []}, "tickers": []},
             "columns": ["name", "description", "sector", "close", "change"],
             "sort": {"sortBy": "market_cap_basic", "sortOrder": "desc"},
-            "range": [0, 3000]  # Increased from 2000 to ensure we capture ALL stocks
+            "range": [0, 1200]  # Capture ~900+ stocks; avoid extremely large payloads
         }
 
         print(">>> Fetching FULL MARKET Data from TV Scanner (900+ stocks)...")
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         response = requests.post(TV_SCANNER_URL, json=payload, headers=headers, timeout=55)
         response.raise_for_status()
-        raw_data = response.json().get('data', [])
+        try:
+            raw_data = response.json().get('data', [])
+        except Exception as e:
+            print(f">>> Failed to parse TV response JSON: {e}")
+            raise
+
         if not raw_data:
             raise Exception("Empty data from TV Scanner")
+
+        # Defensive: limit number of items processed to avoid extremely deep recursion
+        # in pathological responses. We still capture the full IDX universe (~900 stocks).
+        if len(raw_data) > 1500:
+            print(f">>> TV returned {len(raw_data)} items, truncating to 1500 to avoid parser issues")
+            raw_data = raw_data[:1500]
 
         sectors = {}
         processed_count = 0
@@ -2358,6 +2579,8 @@ def _fetch_and_update_sectors_sync():
 
     except Exception as e:
         print(f">>> Sector fetch failed: {e}")
+        import traceback
+        traceback.print_exc()
         return None
     finally:
         _sector_fetch_in_progress = False
@@ -2472,5 +2695,102 @@ def get_sector_fallback():
     }
     return jsonify(fallback_data)
 
+@app.route("/api/v1/broker-summary/<symbol>", methods=['GET'])
+def get_broker_summary(symbol):
+    symbol = symbol.upper()
+    try:
+        data = broker_service.get_data(symbol)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ================= WebSocket Events for Real-Time Broker Summary =================
+
+# Background thread for broadcasting broker summary updates every 5 seconds
+def broadcast_broker_summary(symbol: str):
+    """Fetch and broadcast broker summary data for a symbol."""
+    try:
+        data = broker_service.get_data(symbol)
+        socketio.emit('broker_summary_data', data, namespace='/ws/broker-summary')
+    except Exception as e:
+        socketio.emit('broker_summary_error', {'error': str(e)}, namespace='/ws/broker-summary')
+
+# Timer handles for each symbol
+broadcast_timers = {}
+
+@socketio.on('subscribe', namespace='/ws/broker-summary')
+def handle_subscribe(data):
+    """Client subscribes to broker summary for a specific symbol."""
+    symbol = data.get('symbol', '').upper()
+    if not symbol:
+        emit('error', {'message': 'Symbol is required'})
+        return
+    
+    sid = request.sid
+    
+    # Add client to subscription
+    if symbol not in active_subscriptions:
+        active_subscriptions[symbol] = set()
+    active_subscriptions[symbol].add(sid)
+    
+    # Start broadcast timer if not already running
+    if symbol not in broadcast_timers:
+        def broadcast_loop():
+            for _ in range(12):  # Broadcast for 60 seconds (5s * 12 = 60s)
+                if symbol in active_subscriptions and active_subscriptions[symbol]:
+                    broadcast_broker_summary(symbol)
+                    socketio.sleep(5)
+                else:
+                    break
+            # Clean up if no more subscribers
+            if symbol in active_subscriptions and not active_subscriptions[symbol]:
+                del active_subscriptions[symbol]
+                if symbol in broadcast_timers:
+                    del broadcast_timers[symbol]
+        
+        broadcast_timers[symbol] = True
+        socketio.start_background_task(broadcast_loop)
+    
+    # Send initial data immediately
+    broadcast_broker_summary(symbol)
+    
+    emit('subscribed', {'symbol': symbol, 'status': 'success'})
+
+@socketio.on('unsubscribe', namespace='/ws/broker-summary')
+def handle_unsubscribe(data):
+    """Client unsubscribes from broker summary."""
+    symbol = data.get('symbol', '').upper()
+    sid = request.sid
+    
+    if symbol in active_subscriptions:
+        active_subscriptions[symbol].discard(sid)
+        if not active_subscriptions[symbol]:
+            del active_subscriptions[symbol]
+    
+    emit('unsubscribed', {'symbol': symbol})
+
+@socketio.on('ping', namespace='/ws/broker-summary')
+def handle_ping(data):
+    """Handle ping from client."""
+    emit('pong', {'timestamp': datetime.now().isoformat()})
+
+@socketio.on('connect', namespace='/ws/broker-summary')
+def handle_connect():
+    """Handle client connection."""
+    print(f"Client connected: {request.sid}")
+    emit('connected', {'status': 'ok'})
+
+@socketio.on('disconnect', namespace='/ws/broker-summary')
+def handle_disconnect():
+    """Handle client disconnection."""
+    sid = request.sid
+    # Remove from all subscriptions
+    for symbol in list(active_subscriptions.keys()):
+        if sid in active_subscriptions[symbol]:
+            active_subscriptions[symbol].discard(sid)
+            if not active_subscriptions[symbol]:
+                del active_subscriptions[symbol]
+    print(f"Client disconnected: {sid}")
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000, threaded=True)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
