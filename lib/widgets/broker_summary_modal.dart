@@ -11,6 +11,11 @@ class BrokerSummaryModal extends StatelessWidget {
 
   const BrokerSummaryModal({super.key, required this.stockCode});
 
+  // Known foreign broker codes (kept small and editable)
+  static const Set<String> _foreignBrokerCodes = {
+    'AK', 'BK', 'CS', 'KZ', 'MS', 'RX', 'YU', 'ZP', 'DR', 'TJ', 'BS', 'DB'
+  };
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
@@ -307,34 +312,78 @@ class BrokerSummaryModal extends StatelessWidget {
   }
 
   Widget _buildBrokerLists(BuildContext context, BrokerSummaryModel data) {
-    return Row(
+    Widget legendItem(Color dotColor, String label) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: dotColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(label, style: GoogleFonts.robotoMono(color: Colors.white70, fontSize: 12)),
+          ],
+        );
+
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            children: [
-              _buildListHeader('TOP BUYER', Colors.greenAccent),
-              const SizedBox(height: 10),
-              ...data.topBuyers.map(
-                (b) => _buildBrokerRow(context, b, Colors.greenAccent),
-              ),
-            ],
-          ),
+        // Legend
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            legendItem(Colors.cyanAccent, 'Lokal'),
+            const SizedBox(width: 18),
+            legendItem(Colors.deepPurpleAccent, 'Asing'),
+          ],
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            children: [
-              _buildListHeader('TOP SELLER', Colors.redAccent),
-              const SizedBox(height: 10),
-              ...data.topSellers.map(
-                (s) => _buildBrokerRow(context, s, Colors.redAccent),
+        const SizedBox(height: 12),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  _buildListHeader('TOP BUYER', Colors.greenAccent),
+                  const SizedBox(height: 10),
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: data.topBuyers.length,
+                    separatorBuilder: (c, i) => const SizedBox(height: 8),
+                    itemBuilder: (c, i) => _buildBrokerRow(c, data.topBuyers[i], Colors.greenAccent),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                children: [
+                  _buildListHeader('TOP SELLER', Colors.redAccent),
+                  const SizedBox(height: 10),
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: data.topSellers.length,
+                    separatorBuilder: (c, i) => const SizedBox(height: 8),
+                    itemBuilder: (c, i) => _buildBrokerRow(c, data.topSellers[i], Colors.redAccent),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );
+  }
+
+  bool _isForeignBroker(String? code) {
+    if (code == null) return false;
+    return _foreignBrokerCodes.contains(code.trim().toUpperCase());
   }
 
   Widget _buildListHeader(String title, Color color) {
@@ -388,26 +437,31 @@ class BrokerSummaryModal extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 24,
-                height: 24,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                  color: Colors.white10,
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-                  broker.broker,
-                  style: GoogleFonts.robotoMono(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11, // Increased size slightly
-                    shadows: [
-                      const Shadow(blurRadius: 2.0, color: Colors.black45),
-                    ],
+              Builder(builder: (ctx) {
+                final isForeign = _isForeignBroker(broker.broker);
+                final dotColor = isForeign ? Colors.deepPurpleAccent : Colors.cyanAccent;
+                return Container(
+                  width: 24,
+                  height: 24,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: dotColor.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: dotColor.withOpacity(0.6)),
                   ),
-                ),
-              ),
+                  child: Text(
+                    broker.broker,
+                    style: GoogleFonts.robotoMono(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      shadows: [
+                        const Shadow(blurRadius: 2.0, color: Colors.black45),
+                      ],
+                    ),
+                  ),
+                );
+              }),
               const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

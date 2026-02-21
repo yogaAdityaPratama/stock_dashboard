@@ -33,7 +33,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       });
 
     // Optional: auto-navigate after 4.5 seconds (short splash)
-    _autoNavigateTimer = Timer(const Duration(milliseconds: 6500), () {
+    _autoNavigateTimer = Timer(const Duration(milliseconds: 9000), () {
       if (mounted) {
         _controller.pause();
         widget.onFinish?.call();

@@ -162,21 +162,40 @@ class BrokerSummaryService:
         def generate_broker_distribution(total_value_pool, is_buyer):
             result = []
             used_brokers = []
-            weights = [0.40, 0.25, 0.15, 0.12, 0.08]
-            
-            for i in range(5):
+
+            # Use dynamic weights across all available brokers so we can return every broker.
+            n = len(brokers)
+            if n == 0:
+                return result
+
+            # Linear descending weights (n ... 1) normalized to sum=1 to favor top brokers
+            denom = sum(range(1, n + 1))
+            weights = [(n - i) / denom for i in range(n)]
+
+            for i in range(n):
+                # pick next unused broker (shuffle-like behavior)
                 b_code = random.choice(brokers)
-                while b_code in used_brokers: b_code = random.choice(brokers)
+                attempts = 0
+                while b_code in used_brokers and attempts < 10:
+                    b_code = random.choice(brokers)
+                    attempts += 1
+                if b_code in used_brokers:
+                    # fallback: find first unused
+                    for b in brokers:
+                        if b not in used_brokers:
+                            b_code = b
+                            break
                 used_brokers.append(b_code)
-                
+
                 allocated_value = total_value_pool * weights[i]
                 offset = random.randint(0, 50) if is_buyer else random.randint(-50, 0)
                 avg_price_est = base_price + offset
-                if avg_price_est <= 0: avg_price_est = base_price
-                
-                vol_est = int(allocated_value / avg_price_est)
+                if avg_price_est <= 0:
+                    avg_price_est = base_price
+
+                vol_est = int(allocated_value / avg_price_est) if avg_price_est else 0
                 val_billions = allocated_value / 1_000_000_000
-                
+
                 result.append({
                     "broker": b_code,
                     "value": f"{val_billions:.1f}B",

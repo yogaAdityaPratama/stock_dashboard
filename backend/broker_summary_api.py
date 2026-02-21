@@ -260,14 +260,19 @@ class BrokerSummaryService:
                 mm_action = "SELLING"
 
             def parse_brokers(raw_list):
+                # Parse all brokers provided by the upstream JSON (do not truncate)
                 result = []
-                for b in raw_list[:5]:
-                    result.append({
-                        "broker": b.get("broker_code", "XX"),
-                        "value": f"{b.get('value', 0) / 1_000_000_000:.1f}B",
-                        "avg_price": int(b.get("avg_price", 0)),
-                        "volume": int(b.get("volume", 0))
-                    })
+                for b in raw_list:
+                    try:
+                        result.append({
+                            "broker": b.get("broker_code", "XX"),
+                            "value": f"{b.get('value', 0) / 1_000_000_000:.1f}B",
+                            "avg_price": int(b.get("avg_price", 0)),
+                            "volume": int(b.get("volume", 0))
+                        })
+                    except Exception:
+                        # Skip invalid entries but keep parsing the rest
+                        continue
                 return result
 
             top_buyers_list = parse_brokers(real_data.get("top_buyers", []))
