@@ -78,13 +78,13 @@ ttl_cache = TTLCache(maxsize=100, ttl=300)
 try:
     if USE_REDIS:
         redis_client = redis.from_url(REDIS_URL, decode_responses=True)
-        print("✅ Redis connected")
+        print("[OK] Redis connected")
     else:
         redis_client = None
-        print("⚠️ Redis not enabled, using in-memory TTLCache")
+        print("[WARN] Redis not enabled, using in-memory TTLCache")
 except Exception as e:
     redis_client = None
-    print(f"❌ Redis connection failed: {e}, using in-memory TTLCache")
+    print(f"[ERROR] Redis connection failed: {e}, using in-memory TTLCache")
 
 class BrokerSummaryService:
     def __init__(self):
@@ -585,7 +585,7 @@ class BlackRockStockForecaster:
             # Log Training Result
             final_loss = history.history['loss'][-1]
             final_val_loss = history.history['val_loss'][-1]
-            print(f"✅ LSTM Model Trained Successfully!")
+            print(f"[OK] LSTM Model Trained Successfully!")
             print(f"📉 Final Loss: {final_loss:.5f} | Val Loss: {final_val_loss:.5f}")
         else:
             print(f"⏩ [BlackRock AI] Using existing trained model (Last trained: {self.last_trained})")
@@ -657,7 +657,7 @@ def generate_quant_warning(expected_return, volume_ratio=1.0, rsi=50.0, foreign_
 
     # 1. Return Forecast (utama)
     if expected_return > 40:
-        _append_detail('return', "EXTREME BULLISH", "Waspadai Bull Trap – potensi pump & dump tinggi", "danger", "⚠️")
+        _append_detail('return', "EXTREME BULLISH", "Waspadai Bull Trap – potensi pump & dump tinggi", "danger", "[WARN]")
     elif expected_return > 20:
         _append_detail('return', "STRONG BULLISH", "Momentum kuat – konfirmasi dengan volume", "success", "📈")
     elif expected_return > 8:
@@ -749,7 +749,7 @@ def forecast_advanced():
                 "level": "NEUTRAL",
                 "message": message,
                 "color": "secondary",
-                "icon": "⚠️",
+                "icon": "[WARN]",
                 "secondary": ["Data historis terbatas"]
             }
             return jsonify({
@@ -765,7 +765,7 @@ def forecast_advanced():
         hist = stock.history(period='1y')
         
         if len(hist) < 120:
-            print(f"❌ Error: Not enough history data ({len(hist)} days)")
+            print(f"[ERROR] Error: Not enough history data ({len(hist)} days)")
             return return_fallback('Data historis kurang dari 120 hari')
 
         df = pd.DataFrame()
@@ -841,7 +841,7 @@ def forecast_advanced():
         print(f"   Current Price: {current_price}")
         print(f"   Forecast 30d:  {pred_30d[-1]:.2f}")
         print(f"   Exp Return:    {expected_return:.2f}%")
-        print(f"⚠️ Quant Signal: {quant_signal['level']} - {quant_signal['message']}")
+        print(f"[WARN] Quant Signal: {quant_signal['level']} - {quant_signal['message']}")
         print(f"==========================================\n")
 
         return jsonify({
@@ -857,7 +857,7 @@ def forecast_advanced():
         })
 
     except Exception as e:
-        print(f"❌ Error in Advanced Forecast: {e}")
+        print(f"[ERROR] Error in Advanced Forecast: {e}")
         import traceback
         traceback.print_exc()
         
@@ -865,7 +865,7 @@ def forecast_advanced():
             "level": "NEUTRAL",
             "message": f"Analisis gagal: {str(e)[:100]}",
             "color": "secondary",
-            "icon": "⚠️",
+            "icon": "[WARN]",
             "secondary": ["Server error or Data issue"]
         }
         
@@ -1264,7 +1264,7 @@ def analyze_sentiment():
         
     except Exception as e:
         # Fallback Mechanism for High Availability
-        print(f"⚠️ Sentiment Analysis Error for {stock_code}: {e}")
+        print(f"[WARN] Sentiment Analysis Error for {stock_code}: {e}")
         rand_val = random.uniform(-25, 25)
         
         # Generate consistent fallback structure
@@ -1366,7 +1366,7 @@ def get_full_analysis():
         if tv_res.get('data'):
             current_change = tv_res['data'][0]['d'][0]  # Column index 0 is 'change'
     except Exception as e:
-        print(f"⚠️ Analysis Performance TV Fetch Error: {e}")
+        print(f"[WARN] Analysis Performance TV Fetch Error: {e}")
         current_change = random.uniform(-2, 2)
 
     is_bluechip = stock_code in ['BBCA', 'BBRI', 'BMRI', 'TLKM', 'ASII', 'BBNI']
@@ -1436,7 +1436,7 @@ def get_full_analysis():
                 
                 # Final check for safety
                 if X.isnull().values.any() or np.isinf(X.values).any():
-                     print("⚠️ Data contain NaN or Inf even after cleaning. Replacing with 0.")
+                     print("[WARN] Data contain NaN or Inf even after cleaning. Replacing with 0.")
                      X = X.fillna(0).replace([np.inf, -np.inf], 0)
 
                 # Train Mini-Model (On-the-fly Learning)
@@ -1518,7 +1518,7 @@ def get_full_analysis():
                                 has_catalyst = True
                                 break
                 except Exception as news_err:
-                    print(f"⚠️ News Scraping Error in analysis: {news_err}")
+                    print(f"[WARN] News Scraping Error in analysis: {news_err}")
 
                 final_bullish = min(max(prob_up, 5), 98) # Cap 5-98%
                 
@@ -1537,7 +1537,7 @@ def get_full_analysis():
             raise Exception("Not enough data for ML")
             
     except Exception as e:
-        print(f"❌ ML Error for {stock_code}: {e}")
+        print(f"[ERROR] ML Error for {stock_code}: {e}")
         # Fallback Logic (Heuristic v2.4)
         if current_change > 0.5:
             sentiment_text = "Bullish"
@@ -1549,7 +1549,7 @@ def get_full_analysis():
             sentiment_text = "Neutral"
             bullish_pct = 50.0
         bearish_pct = 100 - bullish_pct
-        print(f"⚠️ Using Fallback Heuristic: {sentiment_text}")
+        print(f"[WARN] Using Fallback Heuristic: {sentiment_text}")
 
     # ========== 3. AI ANALYSIS TASKS ==========
     tasks = {
@@ -1661,7 +1661,7 @@ def get_full_analysis():
             if current_change > 2.0 and volume_ratio < 0.7:
                 quant_warnings.append({
                     'type': 'DANGER',
-                    'icon': '⚠️',
+                    'icon': '[WARN]',
                     'message': 'Hati-hati Jebakan Bandar – harga naik tapi volume menurun',
                     'detail': f'Price up {current_change:.1f}% namun volume -{(1-volume_ratio)*100:.0f}%. Kemungkinan distribusi terselubung oleh smart money.'
                 })
@@ -1688,7 +1688,7 @@ def get_full_analysis():
             if broker_flow['groups']['status'] in ['AKUMULASI SENYAP', 'DUKUNGAN INSTITUSI'] and abs(current_change) < 2.0:
                 quant_warnings.append({
                     'type': 'SAFE',
-                    'icon': '✅',
+                    'icon': '[OK]',
                     'message': 'Accumulation Phase Aman – whale masih beli',
                     'detail': 'Smart Money/Institusi terus mengakumulasi di harga sideways. Zone aman untuk ikut posisi jangka menengah.'
                 })
@@ -1734,7 +1734,7 @@ def get_full_analysis():
                 })
             
     except Exception as warn_error:
-        print(f"⚠️ Quant Warning Generation Error: {warn_error}")
+        print(f"[WARN] Quant Warning Generation Error: {warn_error}")
         # Fallback warning based on broker summary only
         if broker_flow['groups']['status'] == 'SMART MONEY KELUAR':
             quant_warnings.append({
@@ -2143,7 +2143,7 @@ def _fetch_from_goapi(stock_code):
             
             # Check if data is valid
             if not data or 'results' not in data:
-                print(f"⚠️ GoAPI returned empty data for {stock_code}")
+                print(f"[WARN] GoAPI returned empty data for {stock_code}")
                 return None
             
             result = data['results']
@@ -2194,7 +2194,7 @@ def _fetch_from_goapi(stock_code):
                 classification = 'BALANCED - Fair Value'
                 classification_color = 'yellow'
             
-            print(f"✅ GoAPI.id fetch successful for {stock_code}")
+            print(f"[OK] GoAPI.id fetch successful for {stock_code}")
             
             return {
                 'code': stock_code,
@@ -2251,20 +2251,20 @@ def _fetch_from_goapi(stock_code):
             }
             
         elif response.status_code == 401:
-            print(f"❌ GoAPI.id: Invalid API Key")
+            print(f"[ERROR] GoAPI.id: Invalid API Key")
             return None
         elif response.status_code == 404:
-            print(f"❌ GoAPI.id: Stock {stock_code} not found")
+            print(f"[ERROR] GoAPI.id: Stock {stock_code} not found")
             return None
         else:
-            print(f"❌ GoAPI.id returned status {response.status_code}")
+            print(f"[ERROR] GoAPI.id returned status {response.status_code}")
             return None
             
     except requests.exceptions.Timeout:
         print(f"⏱️ GoAPI.id timeout for {stock_code}")
         return None
     except Exception as e:
-        print(f"❌ GoAPI.id error for {stock_code}: {e}")
+        print(f"[ERROR] GoAPI.id error for {stock_code}: {e}")
         return None
 
 def _fetch_real_fundamental_data(stock_code):
@@ -2284,7 +2284,7 @@ def _fetch_real_fundamental_data(stock_code):
         hist = stock.history(period="5y")
         
         if hist.empty or info.get('currentPrice') is None:
-            print(f"⚠️ No data found for {yf_code} on Yahoo Finance")
+            print(f"[WARN] No data found for {yf_code} on Yahoo Finance")
             return None
         
         # Extract fundamental metrics from Yahoo Finance
@@ -2329,7 +2329,7 @@ def _fetch_real_fundamental_data(stock_code):
         # 4. Fallback for Blue Chips (YF Data Protection)
         # Jika YF return 0/None untuk saham yang pasti bagi dividen, gunakan estimasi konservatif
         if dividend_yield < 0.1 and stock_code in ['BBCA', 'BBRI', 'BMRI', 'BBNI', 'ASII', 'TLKM', 'ADRO', 'ITMG', 'UNTR', 'ICBP', 'INDF']:
-             print(f"⚠️ YF Missing Dividend Data for {stock_code}. Using historical estimate fallback.")
+             print(f"[WARN] YF Missing Dividend Data for {stock_code}. Using historical estimate fallback.")
              if stock_code in ['ADRO', 'ITMG', 'PTBA', 'HEXA']: # High Yielders
                 dividend_yield = 10.0
              elif stock_code in ['BBRI', 'BMRI', 'BBNI', 'ASII', 'BJBR']: # Moderate Yielders
@@ -2438,7 +2438,7 @@ def _fetch_real_fundamental_data(stock_code):
         }
     
     except Exception as e:
-        print(f"❌ Error fetching real data for {stock_code}: {e}")
+        print(f"[ERROR] Error fetching real data for {stock_code}: {e}")
         return None
 
 # Assuming there is a function `forecast_advanced` that this change is meant for.
@@ -2472,7 +2472,7 @@ def get_fundamental_data():
     real_data = _fetch_real_fundamental_data(stock_code)
     
     if real_data:
-        print(f"✅ Successfully fetched from Yahoo Finance for {stock_code}")
+        print(f"[OK] Successfully fetched from Yahoo Finance for {stock_code}")
         return jsonify(real_data)
     
     # ========== PRIORITY 2: GoAPI.id (Fallback) ==========
@@ -2480,11 +2480,11 @@ def get_fundamental_data():
     goapi_data = _fetch_from_goapi(stock_code)
     
     if goapi_data:
-        print(f"✅ Successfully fetched from GoAPI.id for {stock_code}")
+        print(f"[OK] Successfully fetched from GoAPI.id for {stock_code}")
         return jsonify(goapi_data)
     
     # ========== PRIORITY 3: Mock Data (Last Resort) ==========
-    print(f"⚠️ [3/3] All APIs failed. Using mock fallback for {stock_code}")
+    print(f"[WARN] [3/3] All APIs failed. Using mock fallback for {stock_code}")
     
     # Fallback to mock data if real data fetch fails
     stock = next((s for s in MOCK_STOCKS if s['code'] == stock_code), None)
