@@ -7,6 +7,7 @@ import '../services/api_service.dart';
 import 'package:stockid/widgets/quant_warning_blackrock.dart';
 import 'package:stockid/widgets/broker_summary_modal.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:stockid/screens/fullscreen_chart_screen.dart';
 
 /// ============================================================================
 /// ANALYSIS SCREEN - CORE MODULE
@@ -268,6 +269,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         'net_profit_growth': 15,
         'fcf_to_net_income': 0.18,
         'esg_score': 85,
+        'free_float': 40.5,
       },
       'per_share_metrics': {'eps': 1850, 'bvps': 5444, 'dps': 343},
       'classification': {
@@ -496,7 +498,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Header Section
-        _buildModalHeader(code, name, sector, price, marketCap),
+        _buildModalHeader(code, name, sector, price, marketCap, metrics),
         const SizedBox(height: 20),
 
         // Classification Section
@@ -540,6 +542,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     String sector,
     dynamic price,
     dynamic marketCap,
+    Map<String, dynamic> metrics,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -642,7 +645,18 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             const Icon(Icons.language, color: Colors.white38, size: 12),
             const SizedBox(width: 4),
             Text(
-              'Market Cap: ${(marketCap as num).toStringAsFixed(1)}B',
+              'Market Cap: ${NumberFormat.decimalPattern('id_ID').format(marketCap)}B',
+              style: const TextStyle(
+                color: Colors.white38,
+                fontSize: 10,
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Icon(Icons.public, color: Colors.white38, size: 12),
+            const SizedBox(width: 4),
+            Text(
+              'Free Float: ${metrics['free_float'] ?? 0}%',
               style: const TextStyle(
                 color: Colors.white38,
                 fontSize: 10,
@@ -712,94 +726,67 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   }
 
   Widget _buildCoreMetricsGrid(Map<String, dynamic> metrics) {
-    return Column(
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 3,
+      crossAxisSpacing: 6,
+      mainAxisSpacing: 6,
+      childAspectRatio: 1.4, // Increased height for larger fonts
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildLargeMetricCard(
-                'ROE',
-                '${metrics['roe'] ?? 0}%',
-                const Color(0xFF1FBCA3),
-                'Return on Equity',
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildLargeMetricCard(
-                'ROIC',
-                '${metrics['roic'] ?? 0}%',
-                const Color(0xFF6B7FF1),
-                'Return on Invested Capital',
-              ),
-            ),
-          ],
+        _buildLargeMetricCard(
+          'ROE',
+          '${metrics['roe'] ?? 0}%',
+          const Color(0xFF4DB6AC), // Muted Teal
+          'Return on Equity',
         ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _buildLargeMetricCard(
-                'PER',
-                '${metrics['per'] ?? 0}x',
-                const Color(0xFF10B981),
-                'Price-to-Earnings',
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildLargeMetricCard(
-                'PBV',
-                '${metrics['pbv'] ?? 0}x',
-                const Color(0xFF8B5CF6),
-                'Price-to-Book Value',
-              ),
-            ),
-          ],
+        _buildLargeMetricCard(
+          'ROIC',
+          '${metrics['roic'] ?? 0}%',
+          const Color(0xFF7986CB), // Muted Indigo
+          'Inv. Capital',
         ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _buildLargeMetricCard(
-                'DER',
-                '${metrics['der'] ?? 0}x',
-                const Color(0xFFC2410C),
-                'Debt-to-Equity',
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildLargeMetricCard(
-                'Dividend',
-                '${metrics['dividend_yield'] ?? 0}%',
-                const Color(0xFFC2410C),
-                'Dividend Yield',
-              ),
-            ),
-          ],
+        _buildLargeMetricCard(
+          'PER',
+          '${metrics['per'] ?? 0}x',
+          const Color(0xFF81C784), // Muted Green
+          'Price/Earnings',
         ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _buildLargeMetricCard(
-                'Growth',
-                '${metrics['net_profit_growth'] ?? 0}%',
-                const Color(0xFFF59E0B),
-                'Net Profit Growth',
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildLargeMetricCard(
-                'ESG',
-                '${metrics['esg_score'] ?? 0}',
-                const Color(0xFF6CC24A),
-                'ESG Score (0-100)',
-              ),
-            ),
-          ],
+        _buildLargeMetricCard(
+          'PBV',
+          '${metrics['pbv'] ?? 0}x',
+          const Color(0xFF9575CD), // Muted Purple
+          'Price/Book',
+        ),
+        _buildLargeMetricCard(
+          'DER',
+          '${metrics['der'] ?? 0}x',
+          const Color(0xFFA1887F), // Muted Brown/Gray
+          'Debt/Equity',
+        ),
+        _buildLargeMetricCard(
+          'DIVIDEND',
+          '${metrics['dividend_yield'] ?? 0}%',
+          const Color(0xFFE57373), // Muted Red
+          'Yield',
+        ),
+        _buildLargeMetricCard(
+          'GROWTH',
+          '${metrics['net_profit_growth'] ?? 0}%',
+          const Color(0xFFFFB74D), // Muted Orange
+          'Net Growth',
+        ),
+        _buildLargeMetricCard(
+          'ESG',
+          '${metrics['esg_score'] ?? 0}',
+          const Color(0xFF9CCC65), // Muted Light Green
+          'ESG Score',
+        ),
+        _buildLargeMetricCard(
+          'FLOAT',
+          '${metrics['free_float'] ?? 0}%',
+          const Color(0xFF64B5F6), // Muted Blue
+          'Public Shares',
         ),
       ],
     );
@@ -886,42 +873,44 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     String description,
   ) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A0F2E),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
+        color: const Color(0xFF0D0D14), // Darker, cleaner NASA background
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 0.8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            label,
-            style: TextStyle(
-              color: color.withValues(alpha: 0.9),
-              fontSize: 10,
+            label.toUpperCase(),
+            style: GoogleFonts.outfit(
+              color: color.withValues(alpha: 0.7),
+              fontSize: 9,
               fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
+              letterSpacing: 0.8,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 2),
           Text(
             value,
-            style: TextStyle(
-              color: color,
-              fontSize: 16,
+            style: GoogleFonts.robotoMono(
+              color: color.withValues(alpha: 0.9),
+              fontSize: 15,
               fontWeight: FontWeight.bold,
-              letterSpacing: 0.3,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 1),
           Text(
             description,
-            style: TextStyle(
-              color: Colors.white38,
-              fontSize: 8,
-              letterSpacing: 0.2,
+            style: GoogleFonts.outfit(
+              color: Colors.white24,
+              fontSize: 12,
+              letterSpacing: 0.1,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -1572,7 +1561,31 @@ class _ChartSection extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const Icon(Icons.show_chart, color: Colors.cyanAccent, size: 18),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.fullscreen_rounded,
+                      color: Colors.cyanAccent,
+                      size: 22,
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              FullscreenChartScreen(stockCode: stockCode),
+                        ),
+                      );
+                    },
+                  ),
+                  const Icon(
+                    Icons.show_chart,
+                    color: Colors.cyanAccent,
+                    size: 18,
+                  ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -1580,7 +1593,7 @@ class _ChartSection extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             child: TradingViewChart(
               symbol: stockCode,
-              height: 280, // Reduced from 350
+              height: 320,
               interval: 'D',
             ),
           ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 /// ============================================================================
@@ -25,7 +27,7 @@ class TradingViewChart extends StatefulWidget {
     super.key,
     required this.symbol,
     this.theme = 'dark',
-    this.height = 280, // Default adjusted for compact view
+    this.height = 320, // Increased slightly for better menu room
     this.interval = 'D',
   });
 
@@ -74,33 +76,40 @@ class _TradingViewChartState extends State<TradingViewChart> {
       <!DOCTYPE html>
       <html lang="id">
         <head>
-          <!-- Allow user scaling and visible overflow so TradingView popups can scroll -->
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             html, body { 
               margin: 0; 
               padding: 0; 
               background-color: #1A0A2E; 
-              /* Allow overlays and dropdowns to escape and be interactive */
-              overflow: visible; 
-              width: 100%;
-              height: 100%;
+              /* IMPORTANT: Allow internal scrolling for popups while maintaining chart fix */
+              overflow: hidden; 
+              width: 100vw;
+              height: 100vh;
               -webkit-overflow-scrolling: touch;
-              touch-action: manipulation;
             }
             #tradingview_chart { 
-              position: absolute; 
-              top: 0; 
-              left: 0; 
               width: 100%; 
               height: 100%; 
               background-color: #1A0A2E;
-              z-index: 1;
             }
-            /* Ensure TradingView's popup layers render above app chrome */
-            .tv-lightweight-charts, .tradingview-widget-copyright, .apply-common-tooltip {
-              z-index: 99999 !important;
+            /* Target TradingView native popups for scrollability */
+            iframe { border: none !important; }
+            
+            /* CSS Fix for Native Timeframe Dropdown if applicable */
+            .tv-dialog, .tv-list-item, .tv-dropdown-menu, .tv-floating-row, .tv-menu-item {
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                max-height: 400px; /* Limit height and force internal scroll */
+            }
+            /* Styling for TradingView built-in scrollbars */
+            ::-webkit-scrollbar {
+              width: 4px;
+            }
+            ::-webkit-scrollbar-thumb {
+              background: rgba(255, 255, 255, 0.1);
+              border-radius: 10px;
             }
           </style>
         </head>
@@ -116,6 +125,7 @@ class _TradingViewChartState extends State<TradingViewChart> {
               "theme": "${widget.theme}",
               "style": "1",
               "locale": "id",
+              "toolbar_bg": "#1A0A2E",
               "enable_publishing": false,
               "allow_symbol_change": true,
               "container_id": "tradingview_chart",
@@ -123,7 +133,16 @@ class _TradingViewChartState extends State<TradingViewChart> {
               "hide_top_toolbar": false,
               "save_image": false,
               "backgroundColor": "#1A0A2E",
-              "gridColor": "rgba(255, 255, 255, 0.05)"
+              "gridColor": "rgba(255, 255, 255, 0.05)",
+              "details": true,
+              "hotlist": true,
+              "calendar": true,
+              "studies": [
+                "RSI@tv-basicstudies",
+                "MASimple@tv-basicstudies"
+              ],
+              "disabled_features": ["header_screenshot", "header_symbol_search"],
+              "enabled_features": ["use_localstorage_for_settings_events", "side_toolbar_in_magnifier_mode"]
             });
           </script>
         </body>
@@ -142,7 +161,14 @@ class _TradingViewChartState extends State<TradingViewChart> {
       ),
       child: Stack(
         children: [
-          WebViewWidget(controller: _controller),
+          WebViewWidget(
+            controller: _controller,
+            gestureRecognizers: {
+              Factory<OneSequenceGestureRecognizer>(
+                () => EagerGestureRecognizer(),
+              ),
+            },
+          ),
           if (_isLoading)
             const Center(
               child: SizedBox(
