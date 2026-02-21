@@ -9,7 +9,11 @@ import 'msci_rebalancing_screen.dart';
 import 'financial_calendar_screen.dart';
 
 class BasicKnowledgeScreen extends StatefulWidget {
-  const BasicKnowledgeScreen({super.key});
+  /// Jika diinisialisasi dengan `initialBrokerCode`, layar akan otomatis
+  /// membuka pop-art (detail) broker tersebut saat pertama kali dimuat.
+  final String? initialBrokerCode;
+
+  const BasicKnowledgeScreen({super.key, this.initialBrokerCode});
 
   @override
   State<BasicKnowledgeScreen> createState() => _BasicKnowledgeScreenState();
@@ -339,6 +343,19 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
     _startNewsTimer();
     _loadTopStories();
     _loadDynamicMarketTags();
+    // Jika ada initialBrokerCode, buka detail broker tersebut setelah frame pertama
+    if (widget.initialBrokerCode != null && widget.initialBrokerCode!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final code = widget.initialBrokerCode!.toString().toUpperCase();
+        final match = brokers.firstWhere(
+          (b) => (b['code'] ?? '').toString().toUpperCase() == code,
+          orElse: () => {},
+        );
+        if (match.isNotEmpty) {
+          _showAnalyticalDetail(match);
+        }
+      });
+    }
   }
 
   Future<void> _loadDynamicMarketTags() async {
