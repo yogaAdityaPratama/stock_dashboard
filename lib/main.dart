@@ -286,8 +286,9 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   void _startUpdateTimer() {
     _updateTimer?.cancel();
-    _updateTimer = Timer.periodic(const Duration(hours: 1), (timer) {
+    _updateTimer = Timer.periodic(const Duration(minutes: 15), (timer) {
       _fetchNews();
+      _fetchLivePrices(); // Also refresh stock prices
     });
   }
 
@@ -853,11 +854,27 @@ class _DashboardScreenState extends State<DashboardScreen>
         }
 
         const categoryKeys = ['Gainer', 'Hype', 'MSCI', 'FTSE', 'Loser'];
-        final String categoryName = categoryKeys[_tabController.index];
+        final int tabIndex = _tabController.index.clamp(
+          0,
+          categoryKeys.length - 1,
+        );
+        final String categoryName = categoryKeys[tabIndex];
 
         // Final fallback: Ensure list exists even if key mapping fails temporarily
         final List<Map<String, dynamic>> stocks =
             _categoryStocks[categoryName] ?? [];
+
+        if (stocks.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(40.0),
+              child: Text(
+                'No $categoryName data available',
+                style: const TextStyle(color: Colors.white54),
+              ),
+            ),
+          );
+        }
 
         return SizedBox(
           height: 400, // Fixed height to show approx 4 cards
@@ -867,20 +884,38 @@ class _DashboardScreenState extends State<DashboardScreen>
             physics: const BouncingScrollPhysics(),
             itemBuilder: (context, index) {
               final stock = stocks[index];
+              // Defensive: skip stocks with missing essential data
+              if (stock['code'] == null || stock['name'] == null) {
+                return const SizedBox.shrink();
+              }
               return GestureDetector(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AnalysisScreen(
-                        stockData: {
-                          ...stock,
-                          'current_price': stock['price'],
-                          'analyst_score': 85,
-                        },
+                  try {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AnalysisScreen(
+                          stockData: {
+                            'code': stock['code'] ?? '',
+                            'name': stock['name'] ?? '',
+                            'price': stock['price'] ?? 0,
+                            'current_price': stock['price'] ?? 0,
+                            'changeNum': stock['changeNum'] ?? 0.0,
+                            'change': stock['change'] ?? '+0.0%',
+                            'analyst_score': 85,
+                          },
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  } catch (e) {
+                    debugPrint('Navigation error: $e');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Gagal membuka analisis saham'),
+                        backgroundColor: Colors.redAccent,
+                      ),
+                    );
+                  }
                 },
                 child: _buildStockCard(stock),
               );
@@ -955,14 +990,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      stock['code'],
+                      stock['code'] ?? '',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
                     ),
                     Text(
-                      stock['name'],
+                      stock['name'] ?? '',
                       style: const TextStyle(
                         color: Colors.white54,
                         fontSize: 10,
@@ -977,7 +1012,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      currencyFormat.format(stock['price']),
+                      currencyFormat.format(stock['price'] ?? 0),
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     Row(
@@ -990,7 +1025,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                         ),
                         const SizedBox(width: 2),
                         Text(
-                          stock['change'],
+                          stock['change'] ?? '+0.0%',
                           style: TextStyle(
                             color: color,
                             fontSize: 12,

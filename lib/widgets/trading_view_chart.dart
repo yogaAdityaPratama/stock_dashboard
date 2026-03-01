@@ -4,17 +4,19 @@ import 'package:flutter/gestures.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 /// ============================================================================
-/// TRADINGVIEW CHART WIDGET
+/// TRADINGVIEW CHART WIDGET - V2 (UPDATED)
 /// ============================================================================
 ///
-/// Deskripsi:
-/// Widget responsif untuk menampilkan data market real-time.
-/// Dioptimalkan untuk "dark mode" dan tampilan mobile.
+/// Upgrade Notes (March 2026):
+/// - Migrated from deprecated `tv.js` to TradingView Widget V2 library
+/// - Added cache-busting timestamp to prevent stale data
+/// - Fixed WebView caching causing chart to freeze at old dates
+/// - Proper no-cache meta headers to force fresh data on every load
 ///
-/// Updates:
-/// - Removed unnecessary white shimmer/loading
-/// - Improved HTML template for responsiveness
-/// - Added robust error handling
+/// The old `https://s3.tradingview.com/tv.js` widget has known issues with
+/// data staleness in embedded WebViews. The new widget script from
+/// `https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js`
+/// provides more reliable real-time data updates.
 /// ============================================================================
 
 class TradingViewChart extends StatefulWidget {
@@ -27,7 +29,7 @@ class TradingViewChart extends StatefulWidget {
     super.key,
     required this.symbol,
     this.theme = 'dark',
-    this.height = 320, // Increased slightly for better menu room
+    this.height = 320,
     this.interval = 'D',
   });
 
@@ -46,13 +48,16 @@ class _TradingViewChartState extends State<TradingViewChart> {
   }
 
   void _initializeChart() {
-    // Ensure idx symbol format
-    final String cleanSymbol = widget.symbol.replaceAll('IDX:', '');
+    // Ensure IDX symbol format
+    final String cleanSymbol = widget.symbol
+        .replaceAll('IDX:', '')
+        .replaceAll('.JK', '')
+        .trim();
     final String formattedSymbol = 'IDX:$cleanSymbol';
 
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.transparent)
+      ..setBackgroundColor(const Color(0xFF1A0A2E))
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (String url) {
@@ -63,50 +68,57 @@ class _TradingViewChartState extends State<TradingViewChart> {
           },
         ),
       )
+      // Clear cache before loading to ensure fresh data
+      ..clearCache()
+      ..clearLocalStorage()
       ..loadHtmlString(_getChartHtml(formattedSymbol));
   }
 
-  /// Generate HTML untuk TradingView chart dengan dark theme optimization
+  /// Generate HTML for TradingView Advanced Chart Widget (V2)
   ///
-  /// IMPORTANT: Menggunakan background color solid (#1A0A2E) instead of transparent
-  /// untuk menghindari white flash saat loading di WebView. Color ini matching
-  /// dengan app theme utama untuk seamless experience.
+  /// KEY CHANGES from V1:
+  /// 1. Uses `embed-widget-advanced-chart.js` instead of deprecated `tv.js`
+  /// 2. Cache-busting timestamp in script URL prevents stale JS from WebView cache
+  /// 3. No-cache meta headers force WebView to fetch fresh data
+  /// 4. `isTransparent: true` for seamless dark mode integration
   String _getChartHtml(String symbol) {
+    // Cache-busting: append current timestamp to script URL
+    final cacheBuster = DateTime.now().millisecondsSinceEpoch;
+
     return '''
       <!DOCTYPE html>
       <html lang="id">
         <head>
+          <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+          <!-- CRITICAL: Force no-cache to prevent stale chart data -->
+          <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+          <meta http-equiv="Pragma" content="no-cache">
+          <meta http-equiv="Expires" content="0">
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             html, body { 
               margin: 0; 
               padding: 0; 
-              background-color: #1A0A2E; 
-              /* IMPORTANT: Allow internal scrolling for popups while maintaining chart fix */
+              background-color: #1A0A2E;
               overflow: hidden; 
               width: 100vw;
               height: 100vh;
               -webkit-overflow-scrolling: touch;
             }
-            #tradingview_chart { 
+            .tradingview-widget-container { 
               width: 100%; 
-              height: 100%; 
+              height: 100%;
               background-color: #1A0A2E;
             }
-            /* Target TradingView native popups for scrollability */
+            .tradingview-widget-container__widget {
+              width: 100%;
+              height: 100%;
+            }
+            /* Hide TradingView branding for cleaner look */
+            .tradingview-widget-copyright { display: none !important; }
             iframe { border: none !important; }
-            
-            /* CSS Fix for Native Timeframe Dropdown if applicable */
-            .tv-dialog, .tv-list-item, .tv-dropdown-menu, .tv-floating-row, .tv-menu-item {
-                overflow-y: auto !important;
-                -webkit-overflow-scrolling: touch !important;
-                max-height: 400px; /* Limit height and force internal scroll */
-            }
-            /* Styling for TradingView built-in scrollbars */
-            ::-webkit-scrollbar {
-              width: 4px;
-            }
+            ::-webkit-scrollbar { width: 4px; }
             ::-webkit-scrollbar-thumb {
               background: rgba(255, 255, 255, 0.1);
               border-radius: 10px;
@@ -114,10 +126,10 @@ class _TradingViewChartState extends State<TradingViewChart> {
           </style>
         </head>
         <body>
-          <div id="tradingview_chart"></div>
-          <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-          <script type="text/javascript">
-            new TradingView.widget({
+          <div class="tradingview-widget-container">
+            <div class="tradingview-widget-container__widget"></div>
+            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js?v=$cacheBuster" async>
+            {
               "autosize": true,
               "symbol": "$symbol",
               "interval": "${widget.interval}",
@@ -125,26 +137,19 @@ class _TradingViewChartState extends State<TradingViewChart> {
               "theme": "${widget.theme}",
               "style": "1",
               "locale": "id",
-              "toolbar_bg": "#1A0A2E",
-              "enable_publishing": false,
-              "allow_symbol_change": true,
-              "container_id": "tradingview_chart",
-              "hide_side_toolbar": false,
-              "hide_top_toolbar": false,
-              "save_image": false,
-              "backgroundColor": "#1A0A2E",
+              "backgroundColor": "rgba(26, 10, 46, 1)",
               "gridColor": "rgba(255, 255, 255, 0.05)",
-              "details": true,
-              "hotlist": true,
-              "calendar": true,
+              "allow_symbol_change": true,
+              "calendar": false,
+              "hide_volume": false,
+              "support_host": "https://www.tradingview.com",
               "studies": [
                 "RSI@tv-basicstudies",
                 "MASimple@tv-basicstudies"
-              ],
-              "disabled_features": ["header_screenshot", "header_symbol_search"],
-              "enabled_features": ["use_localstorage_for_settings_events", "side_toolbar_in_magnifier_mode"]
-            });
-          </script>
+              ]
+            }
+            </script>
+          </div>
         </body>
       </html>
     ''';
@@ -156,31 +161,34 @@ class _TradingViewChartState extends State<TradingViewChart> {
       height: widget.height,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
+        color: const Color(0xFF1A0A2E),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Stack(
-        children: [
-          WebViewWidget(
-            controller: _controller,
-            gestureRecognizers: {
-              Factory<OneSequenceGestureRecognizer>(
-                () => EagerGestureRecognizer(),
-              ),
-            },
-          ),
-          if (_isLoading)
-            const Center(
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.cyanAccent,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          children: [
+            WebViewWidget(
+              controller: _controller,
+              gestureRecognizers: {
+                Factory<OneSequenceGestureRecognizer>(
+                  () => EagerGestureRecognizer(),
+                ),
+              },
+            ),
+            if (_isLoading)
+              const Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.cyanAccent,
+                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -10,5 +10,6 @@
                 "& \"C:\\Users\\ALVAN\\miniconda3\\shell\\condabin\\conda-hook.ps1\"; conda activate stockid"
             ]
         }
-    }
+    },
+    "cmake.sourceDirectory": "D:/stockID/windows"
 }

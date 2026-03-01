@@ -271,16 +271,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
             children: [
               _buildHeaderRow(),
               if (_isAutoMode) _buildTacticalTrigger(),
-              if (!_isAutoMode) ...[
-                TimeframeSelector(
-                  selectedTimeframe: _selectedTimeframe,
-                  onChanged: (tf) => setState(() => _selectedTimeframe = tf),
-                ),
-                const SizedBox(height: 10),
-              ],
-              _buildParameterTrigger(),
-              const SizedBox(height: 10),
-              if (!_isAutoMode) _buildChatInput(),
+              if (_isAutoMode) _buildParameterTrigger(),
               const SizedBox(height: 10),
               _buildTableHeader(),
               Expanded(
@@ -309,11 +300,19 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
-                  vertical: 8,
+                  vertical: 4,
                 ),
                 child: _buildScreeningDisclaimer(),
               ),
-              _buildBottomButton(),
+              if (!_isAutoMode) ...[
+                TimeframeSelector(
+                  selectedTimeframe: _selectedTimeframe,
+                  onChanged: (tf) => setState(() => _selectedTimeframe = tf),
+                ),
+                const SizedBox(height: 8),
+              ],
+              _isAutoMode ? _buildBottomButton() : _buildChatInput(),
+              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -502,6 +501,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
                 setState(() {
                   _isAutoMode = isAuto;
                   if (isAuto) {
+                    _aiResponse = ''; // Hapus respon AI saat pindah ke AUTO
                     _setTacticalDefaults(_selectedTactical);
                   }
                 });
@@ -637,55 +637,94 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
     );
   }
 
+  Widget _buildAiResponseBox() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFC800FF).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFC800FF).withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.psychology_rounded,
+                color: Color(0xFFC800FF),
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'AI INSIGHT',
+                style: GoogleFonts.outfit(
+                  color: const Color(0xFFC800FF),
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _aiResponse,
+            style: GoogleFonts.outfit(
+              color: Colors.white,
+              fontSize: 13,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _sendChat() async {
     final text = _chatController.text.trim();
     if (text.isEmpty) return;
 
     setState(() {
       _isAiLoading = true;
+      _errorMessage = null;
     });
 
     try {
       final response = await _apiService.aiChat(
         prompt: text,
-        screeningResults: _results.isNotEmpty
-            ? _results
-                  .map(
-                    (s) => {
-                      'code': s['code'],
-                      'ml_accuracy': s['ml_accuracy'],
-                      'entry_signal': s['entry_signal'],
-                    },
-                  )
-                  .toList()
-            : null,
+        screeningResults: [],
         timeframe: _selectedTimeframe,
       );
+
+      final recs = (response['recommendations'] as List<dynamic>?) ?? [];
 
       setState(() {
         _aiResponse =
             response['response'] ??
             'Maaf, saya tidak dapat memproses permintaan Anda.';
         _isAiLoading = false;
-      });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_aiResponse, style: GoogleFonts.outfit(fontSize: 12)),
-            backgroundColor: const Color(0xFF1A0A2E),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            margin: const EdgeInsets.all(16),
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
+        // Map 5 recommendations to matches result table
+        _results = recs
+            .map(
+              (r) => {
+                'code': r['code'],
+                'name': r['name'],
+                'price': (r['price'] ?? 0) as num,
+                'analyst_score': (r['conf'] ?? 0) as int,
+                'ml_accuracy': (r['conf'] ?? 0) as double,
+                'is_reverse_merger': false,
+              },
+            )
+            .toList();
+      });
     } catch (e) {
       setState(() {
-        _aiResponse = 'Terjadi kesalahan. Silakan coba lagi.';
+        _errorMessage = 'AI Chat failed. Please try again later.';
         _isAiLoading = false;
       });
     }
@@ -747,7 +786,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
   }
 
   Widget _buildStockList() {
-    if (_results.isEmpty) {
+    if (_results.isEmpty && _aiResponse.isEmpty) {
       return const Center(
         child: Text(
           'No stocks found.',
@@ -757,116 +796,121 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
     }
 
     return ListView.builder(
-      itemCount: _results.length,
+      itemCount: _results.length + (_aiResponse.isNotEmpty ? 1 : 0),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemBuilder: (context, index) {
-        final stock = _results[index];
-        final accuracy =
-            (stock['ml_accuracy'] ?? stock['analyst_score'] ?? 0) as num;
-        final isReverseMerger = (stock['is_reverse_merger'] ?? false) as bool;
-        final score =
-            (stock['analyst_score'] ?? stock['ml_accuracy'] ?? 0) as int;
-        final price = stock['current_price'] ?? stock['price'] ?? 0;
+        if (index < _results.length) {
+          final stock = _results[index];
+          final accuracy =
+              (stock['ml_accuracy'] ?? stock['analyst_score'] ?? 0) as num;
+          final isReverseMerger = (stock['is_reverse_merger'] ?? false) as bool;
+          final score =
+              ((stock['analyst_score'] ?? stock['ml_accuracy'] ?? 0) as num)
+                  .toInt();
+          final price = stock['current_price'] ?? stock['price'] ?? 0;
 
-        final bool isHighTier = accuracy > 90 && score > 80;
+          final bool isHighTier = accuracy > 90 && score > 80;
 
-        return GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AnalysisScreen(stockData: stock),
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AnalysisScreen(stockData: stock),
+                ),
+              );
+            },
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+              decoration: BoxDecoration(
+                gradient: isHighTier
+                    ? LinearGradient(
+                        colors: [
+                          const Color(0xFF4B0082).withOpacity(0.6),
+                          const Color(0xFF8A2BE2).withOpacity(0.3),
+                        ],
+                      )
+                    : null,
+                color: isHighTier ? null : Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: isHighTier
+                    ? Border.all(color: Colors.cyanAccent.withOpacity(0.5))
+                    : Border.all(color: Colors.white10),
               ),
-            );
-          },
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-            decoration: BoxDecoration(
-              gradient: isHighTier
-                  ? LinearGradient(
-                      colors: [
-                        const Color(0xFF4B0082).withOpacity(0.6),
-                        const Color(0xFF8A2BE2).withOpacity(0.3),
-                      ],
-                    )
-                  : null,
-              color: isHighTier ? null : Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(8),
-              border: isHighTier
-                  ? Border.all(color: Colors.cyanAccent.withOpacity(0.5))
-                  : Border.all(color: Colors.white10),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      stock['code'],
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      NumberFormat.simpleCurrency(
+                        locale: 'id_ID',
+                        name: 'Rp ',
+                        decimalDigits: 0,
+                      ).format(price),
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      '$score',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.cyanAccent,
+                        fontWeight: FontWeight.bold,
+                        shadows: [
+                          Shadow(
+                            color: Colors.cyanAccent.withOpacity(0.8),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      '${accuracy.toInt()}%',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: accuracy >= 80
+                            ? Colors.greenAccent
+                            : Colors.white70,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      isReverseMerger ? 'YES' : 'No',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: isReverseMerger
+                            ? Colors.redAccent
+                            : Colors.white54,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    stock['code'],
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    NumberFormat.simpleCurrency(
-                      locale: 'id_ID',
-                      name: 'Rp ',
-                      decimalDigits: 0,
-                    ).format(price),
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    '$score',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.cyanAccent,
-                      fontWeight: FontWeight.bold,
-                      shadows: [
-                        Shadow(
-                          color: Colors.cyanAccent.withOpacity(0.8),
-                          blurRadius: 8,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    '${accuracy.toInt()}%',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: accuracy >= 80
-                          ? Colors.greenAccent
-                          : Colors.white70,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    isReverseMerger ? 'YES' : 'No',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      color: isReverseMerger
-                          ? Colors.redAccent
-                          : Colors.white54,
-                      fontSize: 11,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
+          );
+        }
+
+        return _buildAiResponseBox();
       },
     );
   }

@@ -262,7 +262,7 @@ class ApiService {
     try {
       final response = await http
           .get(Uri.parse('$baseUrl/sectors'))
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 65));
       if (response.statusCode == 200) return jsonDecode(response.body);
       return {};
     } catch (e) {
@@ -274,7 +274,7 @@ class ApiService {
   // Cache for market data to reduce API calls and speed up UI
   Map<String, List<Map<String, dynamic>>>? _cachedCategories;
   DateTime? _lastFetch;
-  static const _cacheDuration = Duration(minutes: 5);
+  static const _cacheDuration = Duration(minutes: 2);
 
   // Fetch multiple stock prices at once with optimized symbol conversion
   Future<List<Map<String, dynamic>>> getMultipleStockPrices(
@@ -372,11 +372,21 @@ class ApiService {
   Future<Map<String, dynamic>> getStockPrice(String stockCode) async {
     try {
       final symbol = stockCode.endsWith('.JK') ? stockCode : '$stockCode.JK';
+
+      // Use range=5d instead of 1d to get data for illiquid/suspended stocks
+      // that may not have traded today or in the last few days
       final uri = Uri.parse(
-        'https://query1.finance.yahoo.com/v8/finance/chart/$symbol?interval=1m&range=1d',
+        'https://query1.finance.yahoo.com/v8/finance/chart/$symbol?interval=1d&range=5d',
       );
 
-      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -393,12 +403,22 @@ class ApiService {
             ? (change / prevClose) * 100
             : 0.0;
 
+        // Extract last trade timestamp for freshness indicator
+        final int? marketTime = meta['regularMarketTime'] as int?;
+        String? lastTradeDate;
+        if (marketTime != null) {
+          final dt = DateTime.fromMillisecondsSinceEpoch(marketTime * 1000);
+          lastTradeDate =
+              '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+        }
+
         return {
           'price': currentPrice,
           'previousClose': prevClose,
           'change': change,
           'changePercent': changePercent,
           'symbol': symbol,
+          'lastTradeDate': lastTradeDate,
         };
       }
       return {};

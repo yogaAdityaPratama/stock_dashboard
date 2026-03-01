@@ -198,41 +198,90 @@ class MoodysRatingsScreen extends StatelessWidget {
             colors: [Color(0xFF1A0A2E), Color(0xFF0A0214)],
           ),
         ),
-        child: ListView.separated(
-          itemCount: _ratings.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (context, i) {
-            final r = _ratings[i];
-            return Container(
-              padding: const EdgeInsets.all(14),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.03),
+                color: Colors.cyanAccent.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white10),
+                border: Border.all(
+                  color: Colors.cyanAccent.withValues(alpha: 0.15),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    r['rating']!,
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.cyanAccent,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Apa itu Moody\'s?',
+                        style: GoogleFonts.outfit(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Text(
-                    r['desc']!,
+                    'Moody\'s Corporation (S&P Global dan Fitch Group) dikenal sebagai "The Big Three" lembaga pemeringkat kredit global. Peringkat ini memberikan standar penilaian mengenai kemampuan perusahaan atau negara dalam membayar kewajiban utangnya (risiko gagal bayar).',
                     style: GoogleFonts.outfit(
                       color: Colors.white70,
-                      fontSize: 12,
+                      fontSize: 13,
+                      height: 1.5,
                     ),
                   ),
                 ],
               ),
-            );
-          },
+            ),
+            Expanded(
+              child: ListView.separated(
+                itemCount: _ratings.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (context, i) {
+                  final r = _ratings[i];
+                  return Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.03),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          r['rating']!,
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          r['desc']!,
+                          style: GoogleFonts.outfit(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -344,7 +393,8 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
     _loadTopStories();
     _loadDynamicMarketTags();
     // Jika ada initialBrokerCode, buka detail broker tersebut setelah frame pertama
-    if (widget.initialBrokerCode != null && widget.initialBrokerCode!.isNotEmpty) {
+    if (widget.initialBrokerCode != null &&
+        widget.initialBrokerCode!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final code = widget.initialBrokerCode!.toString().toUpperCase();
         final match = brokers.firstWhere(
@@ -2690,11 +2740,11 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
       // Sort descending by date
       withDates.sort((a, b) => b['date'].compareTo(a['date']));
 
-      // Limit to max 15
-      var result = withDates.take(15).map((e) => e['news']).toList();
+      // Limit to max 30
+      var result = withDates.take(30).map((e) => e['news']).toList();
 
       // If not enough global items, try to expand by including close matches within 7 days
-      if (_newsScope == 'Global' && result.length < 15) {
+      if (_newsScope == 'Global' && result.length < 30) {
         final additional = _topStories
             .where((n) => !_matchesScope(n))
             .where((n) {
@@ -2709,24 +2759,24 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
               for (var k in _globalKeywords) if (t.contains(k)) return true;
               return false;
             })
-            .take(15 - result.length)
+            .take(30 - result.length)
             .toList();
 
         result.addAll(additional);
       }
 
-      // Fallback: if still empty, include recent (<=7d) items regardless of scope up to 15
+      // Fallback: if still empty, include recent (<=7d) items regardless of scope up to 30
       if (result.isEmpty) {
         final fallback = _topStories.where((n) {
           final d = _extractNewsDate(n) ?? now;
           return now.difference(d).inDays <= 7;
         }).toList();
-        result = fallback.take(15).toList();
+        result = fallback.take(30).toList();
       }
 
       return result;
     } catch (e) {
-      return _topStories.take(15).toList();
+      return _topStories.take(30).toList();
     }
   }
 
@@ -2994,6 +3044,9 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
     final source = (news['source'] ?? news['category'] ?? 'Market').toString();
     final imageUrl = (news['imageUrl'] ?? news['image'])?.toString();
     final url = (news['url'] ?? '').toString();
+    final impactCodes =
+        (news['impactCodes'] as List<dynamic>?)?.cast<String>() ?? [];
+
     final pubDate = _extractNewsDate(news);
     final dateLabel = pubDate != null
         ? DateFormat('yyyy-MM-dd').format(pubDate)
@@ -3059,6 +3112,40 @@ class _BasicKnowledgeScreenState extends State<BasicKnowledgeScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                  if (impactCodes.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: impactCodes
+                          .map(
+                            (c) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.tealAccent.withValues(alpha: 0.1),
+                                border: Border.all(
+                                  color: Colors.tealAccent.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                ),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                c,
+                                style: GoogleFonts.ibmPlexMono(
+                                  color: Colors.tealAccent,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ],
                 ],
               ),
             ),

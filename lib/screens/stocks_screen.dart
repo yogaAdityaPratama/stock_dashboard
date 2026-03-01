@@ -41,9 +41,9 @@ import 'analysis_screen.dart';
 // ============================================================================
 
 class _StocksConfig {
-  // API Timeouts dengan progressive strategy
-  static const Duration initialTimeout = Duration(seconds: 10);
-  static const Duration extendedTimeout = Duration(seconds: 30);
+  // API Timeouts - must exceed backend's TradingView scan timeout (55s)
+  static const Duration initialTimeout = Duration(seconds: 20);
+  static const Duration extendedTimeout = Duration(seconds: 65);
   static const Duration cacheValidityDuration = Duration(minutes: 5);
 
   // Circuit Breaker Configuration
@@ -134,7 +134,7 @@ class SectorsCacheManager {
     }
   }
 
-  /// Load sectors dari cache
+  /// Load sectors dari cache with validation
   static Future<Map<String, List<dynamic>>?> loadFromCache() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -147,10 +147,33 @@ class SectorsCacheManager {
         decoded.map((key, value) => MapEntry(key, List<dynamic>.from(value))),
       );
 
+      // Validate cache integrity: each stock must be a Map with 'code' field
+      for (final entry in sectors.entries) {
+        final validStocks = entry.value.where((stock) {
+          return stock is Map &&
+              stock.containsKey('code') &&
+              stock['code'] != null;
+        }).toList();
+        if (validStocks.isEmpty && entry.value.isNotEmpty) {
+          // Cache corrupted — sector has items but none are valid stocks
+          debugPrint(
+            '⚠️ Cache corrupted for sector ${entry.key}, clearing cache',
+          );
+          await clearCache();
+          return null;
+        }
+      }
+
       debugPrint('💿 Cache loaded: ${sectors.keys.length} sectors');
       return sectors;
     } catch (e) {
       debugPrint('⚠️ Failed to load cache: $e');
+      // Clear corrupted cache
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(_StocksConfig.cacheKeySectors);
+        await prefs.remove(_StocksConfig.cacheKeyTimestamp);
+      } catch (_) {}
       return null;
     }
   }
@@ -413,20 +436,41 @@ class _StocksScreenState extends State<StocksScreen>
           final Map<String, List<dynamic>> out = {};
           s.forEach((k, v) {
             try {
-              out[k.toString()] = List<dynamic>.from(v);
+              if (v is List) {
+                // Validate: each item must be a Map with 'code' key
+                final validStocks = v.where((item) {
+                  return item is Map &&
+                      item.containsKey('code') &&
+                      item['code'] != null;
+                }).toList();
+                if (validStocks.isNotEmpty) {
+                  out[k.toString()] = validStocks;
+                }
+              }
             } catch (_) {
-              out[k.toString()] = [];
+              // Skip this sector if parsing fails
             }
           });
           return out;
         } else if (s is List) {
-          return {'All Sectors': List<dynamic>.from(s)};
+          // Validate list items
+          final validStocks = s.where((item) {
+            return item is Map && item.containsKey('code');
+          }).toList();
+          if (validStocks.isNotEmpty) {
+            return {'All Sectors': validStocks};
+          }
         }
       }
 
       // Some APIs might return a plain list of stocks
       if (data is List) {
-        return {'All Sectors': List<dynamic>.from(data)};
+        final validStocks = data.where((item) {
+          return item is Map && item.containsKey('code');
+        }).toList();
+        if (validStocks.isNotEmpty) {
+          return {'All Sectors': validStocks};
+        }
       }
 
       // Nested payloads: {'data': {'sectors': ...}}
@@ -439,10 +483,15 @@ class _StocksScreenState extends State<StocksScreen>
           final Map<String, List<dynamic>> out = {};
           s.forEach((k, v) {
             try {
-              out[k.toString()] = List<dynamic>.from(v);
-            } catch (_) {
-              out[k.toString()] = [];
-            }
+              if (v is List) {
+                final validStocks = v.where((item) {
+                  return item is Map && item.containsKey('code');
+                }).toList();
+                if (validStocks.isNotEmpty) {
+                  out[k.toString()] = validStocks;
+                }
+              }
+            } catch (_) {}
           });
           return out;
         }
@@ -680,7 +729,13 @@ class _StocksScreenState extends State<StocksScreen>
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
-                  value: _selectedSector,
+                  value:
+                      ([
+                        'All Sectors',
+                        ..._sectors.keys,
+                      ].contains(_selectedSector))
+                      ? _selectedSector
+                      : 'All Sectors',
                   dropdownColor: const Color(0xFF1A0A2E),
                   icon: const Icon(
                     Icons.keyboard_arrow_down,
@@ -689,12 +744,15 @@ class _StocksScreenState extends State<StocksScreen>
                   ),
                   isExpanded: true,
                   style: GoogleFonts.outfit(color: Colors.white, fontSize: 12),
-                  items: ['All Sectors', ..._sectors.keys].map((sector) {
-                    return DropdownMenuItem(
-                      value: sector,
-                      child: Text(sector, overflow: TextOverflow.ellipsis),
-                    );
-                  }).toList(),
+                  items: ['All Sectors', ..._sectors.keys]
+                      .toSet() // Ensure unique items to prevent crash
+                      .map((sector) {
+                        return DropdownMenuItem(
+                          value: sector,
+                          child: Text(sector, overflow: TextOverflow.ellipsis),
+                        );
+                      })
+                      .toList(),
                   onChanged: (newValue) {
                     if (newValue != null) {
                       setState(() => _selectedSector = newValue);
@@ -871,7 +929,7 @@ class _StocksScreenState extends State<StocksScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    stock['code'],
+                    stock['code']?.toString() ?? '',
                     style: GoogleFonts.robotoMono(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -880,7 +938,7 @@ class _StocksScreenState extends State<StocksScreen>
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    stock['name'],
+                    stock['name']?.toString() ?? '',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.outfit(
@@ -930,7 +988,7 @@ class _StocksScreenState extends State<StocksScreen>
               ),
             ),
             const SizedBox(width: 12),
-            _buildStockLogo(stock['code'], trendColor),
+            _buildStockLogo(stock['code']?.toString() ?? '', trendColor),
           ],
         ),
       ),
@@ -982,7 +1040,9 @@ class _StocksScreenState extends State<StocksScreen>
                   ),
                   child: Center(
                     child: Text(
-                      code.substring(0, 2).toUpperCase(),
+                      code.length >= 2
+                          ? code.substring(0, 2).toUpperCase()
+                          : code.toUpperCase(),
                       style: GoogleFonts.robotoMono(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
@@ -1000,20 +1060,43 @@ class _StocksScreenState extends State<StocksScreen>
   }
 
   void _navigateToAnalysis(dynamic stock) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AnalysisScreen(
-          stockData: {
-            'code': stock['code'],
-            'name': stock['name'],
-            'price': stock['price'],
-            'current_price': stock['price'] ?? 0,
-            'change': stock['change'],
-          },
+    try {
+      final code = stock['code']?.toString() ?? '';
+      final name = stock['name']?.toString() ?? '';
+      if (code.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Data saham tidak valid'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AnalysisScreen(
+            stockData: {
+              'code': code,
+              'name': name,
+              'price': stock['price'] ?? 0,
+              'current_price': stock['price'] ?? 0,
+              'change': stock['change'] ?? 0.0,
+            },
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      debugPrint('Navigation error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal membuka analisis saham'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
   }
 
   // ========== FALLBACK DATA ==========

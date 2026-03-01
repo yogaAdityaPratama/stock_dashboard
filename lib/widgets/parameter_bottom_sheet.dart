@@ -98,10 +98,26 @@ class _ParameterBottomSheetState extends State<ParameterBottomSheet> {
   late ScreeningParameters _params;
   final Set<int> _expandedSections = {0};
 
+  late TextEditingController _minPriceController;
+  late TextEditingController _maxPriceController;
+
   @override
   void initState() {
     super.initState();
     _params = widget.initialParams;
+    _minPriceController = TextEditingController(
+      text: _params.priceRange.start.toInt().toString(),
+    );
+    _maxPriceController = TextEditingController(
+      text: _params.priceRange.end.toInt().toString(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _minPriceController.dispose();
+    _maxPriceController.dispose();
+    super.dispose();
   }
 
   @override
@@ -119,10 +135,30 @@ class _ParameterBottomSheetState extends State<ParameterBottomSheet> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                _buildSection(0, 'Price & Market', Icons.attach_money_rounded, _buildPriceSection()),
-                _buildSection(1, 'Fundamental', Icons.analytics_rounded, _buildFundamentalSection()),
-                _buildSection(2, 'Technical', Icons.candlestick_chart_rounded, _buildTechnicalSection()),
-                _buildSection(3, 'Advanced', Icons.tune_rounded, _buildAdvancedSection()),
+                _buildSection(
+                  0,
+                  'Price & Market',
+                  Icons.attach_money_rounded,
+                  _buildPriceSection(),
+                ),
+                _buildSection(
+                  1,
+                  'Fundamental',
+                  Icons.analytics_rounded,
+                  _buildFundamentalSection(),
+                ),
+                _buildSection(
+                  2,
+                  'Technical',
+                  Icons.candlestick_chart_rounded,
+                  _buildTechnicalSection(),
+                ),
+                _buildSection(
+                  3,
+                  'Advanced',
+                  Icons.tune_rounded,
+                  _buildAdvancedSection(),
+                ),
               ],
             ),
           ),
@@ -239,7 +275,10 @@ class _ParameterBottomSheetState extends State<ParameterBottomSheet> {
                   AnimatedRotation(
                     turns: isExpanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 200),
-                    child: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white38),
+                    child: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: Colors.white38,
+                    ),
                   ),
                 ],
               ),
@@ -251,7 +290,9 @@ class _ParameterBottomSheetState extends State<ParameterBottomSheet> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: content,
             ),
-            crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            crossFadeState: isExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
             duration: const Duration(milliseconds: 200),
           ),
         ],
@@ -260,23 +301,56 @@ class _ParameterBottomSheetState extends State<ParameterBottomSheet> {
   }
 
   Widget _buildPriceSection() {
-    final currencyFormat = NumberFormat.simpleCurrency(locale: 'id_ID', name: 'Rp ', decimalDigits: 0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSliderWithLabel(
+        Text(
           'Price Range',
-          '${currencyFormat.format(_params.priceRange.start)} - ${currencyFormat.format(_params.priceRange.end)}',
-          RangeSlider(
-            values: _params.priceRange,
-            min: 50,
-            max: 1000000,
-            divisions: 100,
-            activeColor: const Color(0xFFC800FF),
-            inactiveColor: Colors.white24,
-            onChanged: (v) => setState(() => _params.priceRange = v),
+          style: GoogleFonts.outfit(
+            color: Colors.white70,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
           ),
         ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildPriceInput(
+                controller: _minPriceController,
+                label: 'Min Price',
+                onChanged: (val) {
+                  final doubleValue = double.tryParse(val) ?? 50;
+                  setState(() {
+                    _params.priceRange = RangeValues(
+                      doubleValue,
+                      _params.priceRange.end,
+                    );
+                  });
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(height: 1, width: 15, color: Colors.white24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildPriceInput(
+                controller: _maxPriceController,
+                label: 'Max Price',
+                onChanged: (val) {
+                  final doubleValue = double.tryParse(val) ?? 1000000;
+                  setState(() {
+                    _params.priceRange = RangeValues(
+                      _params.priceRange.start,
+                      doubleValue,
+                    );
+                  });
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
         const SizedBox(height: 16),
         _buildSliderWithLabel(
           'Market Cap',
@@ -373,10 +447,26 @@ class _ParameterBottomSheetState extends State<ParameterBottomSheet> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            _buildQuickChip('PER < 15', _params.perFilter, (v) => setState(() => _params.perFilter = v)),
-            _buildQuickChip('ROE > 15%', _params.roeFilter, (v) => setState(() => _params.roeFilter = v)),
-            _buildQuickChip('PBV < 2', _params.pbvFilter, (v) => setState(() => _params.pbvFilter = v)),
-            _buildQuickChip('Dividend', _params.dividendFilter, (v) => setState(() => _params.dividendFilter = v)),
+            _buildQuickChip(
+              'PER < 15',
+              _params.perFilter,
+              (v) => setState(() => _params.perFilter = v),
+            ),
+            _buildQuickChip(
+              'ROE > 15%',
+              _params.roeFilter,
+              (v) => setState(() => _params.roeFilter = v),
+            ),
+            _buildQuickChip(
+              'PBV < 2',
+              _params.pbvFilter,
+              (v) => setState(() => _params.pbvFilter = v),
+            ),
+            _buildQuickChip(
+              'Dividend',
+              _params.dividendFilter,
+              (v) => setState(() => _params.dividendFilter = v),
+            ),
           ],
         ),
       ],
@@ -396,7 +486,11 @@ class _ParameterBottomSheetState extends State<ParameterBottomSheet> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            _buildQuickChip('Volume Spike', _params.volumeFilter, (v) => setState(() => _params.volumeFilter = v)),
+            _buildQuickChip(
+              'Volume Spike',
+              _params.volumeFilter,
+              (v) => setState(() => _params.volumeFilter = v),
+            ),
           ],
         ),
         if (_params.volumeFilter) ...[
@@ -448,8 +542,18 @@ class _ParameterBottomSheetState extends State<ParameterBottomSheet> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-            Text(value, style: const TextStyle(color: Color(0xFF48CAE4), fontSize: 13, fontWeight: FontWeight.bold)),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Color(0xFF48CAE4),
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
         slider,
@@ -457,14 +561,28 @@ class _ParameterBottomSheetState extends State<ParameterBottomSheet> {
     );
   }
 
-  Widget _buildQuickChip(String label, bool value, ValueChanged<bool> onChanged) {
+  Widget _buildQuickChip(
+    String label,
+    bool value,
+    ValueChanged<bool> onChanged,
+  ) {
     return FilterChip(
-      label: Text(label, style: TextStyle(color: value ? Colors.white : Colors.white54, fontSize: 12)),
+      label: Text(
+        label,
+        style: TextStyle(
+          color: value ? Colors.white : Colors.white54,
+          fontSize: 12,
+        ),
+      ),
       selected: value,
       selectedColor: const Color(0xFFC800FF).withValues(alpha: 0.3),
       backgroundColor: Colors.white.withValues(alpha: 0.05),
       checkmarkColor: const Color(0xFFC800FF),
-      side: BorderSide(color: value ? const Color(0xFFC800FF) : Colors.white.withValues(alpha: 0.1)),
+      side: BorderSide(
+        color: value
+            ? const Color(0xFFC800FF)
+            : Colors.white.withValues(alpha: 0.1),
+      ),
       onSelected: onChanged,
     );
   }
@@ -501,11 +619,16 @@ class _ParameterBottomSheetState extends State<ParameterBottomSheet> {
                 backgroundColor: const Color(0xFFC800FF),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: Text(
                 'Apply Filters',
-                style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ),
           ),
@@ -517,11 +640,61 @@ class _ParameterBottomSheetState extends State<ParameterBottomSheet> {
   void _resetToDefaults() {
     setState(() {
       _params = ScreeningParameters();
+      _minPriceController.text = _params.priceRange.start.toInt().toString();
+      _maxPriceController.text = _params.priceRange.end.toInt().toString();
     });
   }
 
   void _applyParams() {
     widget.onParamsChanged(_params);
     Navigator.pop(context);
+  }
+
+  Widget _buildPriceInput({
+    required TextEditingController controller,
+    required String label,
+    required ValueChanged<String> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.outfit(color: Colors.white38, fontSize: 10),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          style: GoogleFonts.ibmPlexMono(
+            color: const Color(0xFF48CAE4),
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            prefixText: 'Rp ',
+            prefixStyle: GoogleFonts.outfit(
+              color: Colors.white24,
+              fontSize: 14,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.05),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Colors.white10),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFC800FF)),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
